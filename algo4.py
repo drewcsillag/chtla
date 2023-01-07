@@ -1,6 +1,6 @@
 from chtla import RecordingChooser, Checker, Process, Step, run
 
-# from page 15 in TLA+ book -- should fail when amount == 6
+# from page 16 in TLA+ book -- should fail when amount == 6
 
 
 def algo(t: RecordingChooser):
@@ -8,7 +8,6 @@ def algo(t: RecordingChooser):
     sender = "alice"
     receiver = "bob"
     acc = {p: 5 for p in people}
-    amount = t.choose("amount", list(range(0, acc[sender] + 1)))
 
     def outer_no_overdrafts():
         return len([i for i in acc.values() if i >= 0]) == len(people)
@@ -17,6 +16,14 @@ def algo(t: RecordingChooser):
         return True
 
     def inner(num: int, t: RecordingChooser):
+        amount = t.choose("amount", list(range(0, acc[sender] + 1)))
+
+        def step_check_balance(stepper):
+            if amount <= acc[sender]:
+                pass
+            else:
+                stepper.end()
+
         def step_withdraw(_stepper):
             t.record("Proc %d withdrawing %d" % (num, amount), acc[sender] - amount)
             acc[sender] -= amount
@@ -28,6 +35,7 @@ def algo(t: RecordingChooser):
         return Process(
             name="wire " + str(num),
             steps=[
+                Step("CheckBalance", step_check_balance),
                 Step("Withdraw", step_withdraw),
                 Step("Deposit", step_deposit),
             ],

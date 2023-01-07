@@ -28,7 +28,13 @@ class Step:
 
 
 class Process:
-    def __init__(self, name, steps, invariants: List[Callable] = [], endchecks: List[Callable] = []) -> None:
+    def __init__(
+        self,
+        name,
+        steps,
+        invariants: List[Callable] = [],
+        endchecks: List[Callable] = [],
+    ) -> None:
         self.steps = steps
         self.index = 0
         self.name = name
@@ -45,12 +51,14 @@ class Process:
         self.index += 1
         return ret
 
-    def goto(self, name) -> Callable:
-        for i in range(self.steps):
+    def end(self) -> None:
+        self.index = len(self.steps)
+
+    def goto(self, name) -> None:
+        for i in range(len(self.steps)):
             if self.steps[i].name == name:
-                ret = self.steps
                 self.index = i + 1
-                return ret
+                return
         raise ValueError(
             "No step named %s known -- known steps %s"
             % (name, repr([x.name for x in self.steps]))
@@ -66,10 +74,10 @@ class Checker:
         t,
         processes: List[Process],
         endchecks: List[Callable] = [],
-        invariants: List[Callable] = []
+        invariants: List[Callable] = [],
     ) -> None:
         self.t = t
-        self.steppers = processes
+        self.processes = processes
         self.invariants = invariants
         self.endchecks = endchecks
 
@@ -88,24 +96,25 @@ class RecordingChooser:
         self.selected.append((name, val))
 
 
-def check_all_invariants(checker):
+def check_all_invariants(checker: Checker):
     check_assertions("invariants", checker.invariants)
-    for p in checker.steppers:
-        check_assertions('invariants', p.invariants)
+    for p in checker.processes:
+        check_assertions("invariants", p.invariants)
+
 
 def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     rc = RecordingChooser(c)
     try:
         checker = f(rc)
         check_all_invariants(checker)
-        # unfair process
+        # unfair process?
         while True:
-            can_step = [s for s in checker.steppers if not s.is_done()]
+            can_step = [s for s in checker.processes if not s.is_done()]
             if not can_step:
                 break
-            st = rc.choose("inner_stepper", can_step)
+            st = rc.choose("inner_proc", can_step)
             n = st.next()
-            rc.selected.append(("inner_step", n.name))
+            rc.selected.append(("inner_step", "%r %r" % (st, n.name)))
             states[0] += 1
             n.func(st)
             check_all_invariants(checker)
@@ -114,6 +123,7 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
         check_assertions("final", checker.endchecks)
     except:
         print("states: %d" % (states[0],))
+        print("queue: %d" % (len(c.executions)))
         print("choices were:")
         for name, c in rc.selected:
             print("%s: %s" % (name, c))
@@ -124,4 +134,3 @@ def run(f):
     states = [0]
     run_choices(lambda c: wrapper(states, c, f))
     print("states: %d" % (states[0],))
-
