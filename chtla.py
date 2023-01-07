@@ -28,10 +28,12 @@ class Step:
 
 
 class Process:
-    def __init__(self, name, steps) -> None:
+    def __init__(self, name, steps, invariants: List[Callable] = [], endchecks: List[Callable] = []) -> None:
         self.steps = steps
         self.index = 0
         self.name = name
+        self.invariants = invariants
+        self.endchecks = endchecks
 
     def __repr__(self) -> str:
         return "<Process %s>" % (self.name)
@@ -63,8 +65,8 @@ class Checker:
         self,
         t,
         processes: List[Process],
-        invariants: List[Callable] = [],
         endchecks: List[Callable] = [],
+        invariants: List[Callable] = []
     ) -> None:
         self.t = t
         self.steppers = processes
@@ -82,12 +84,20 @@ class RecordingChooser:
         self.selected.append((name, ret))
         return ret
 
+    def record(self, name: str, val: Any):
+        self.selected.append((name, val))
 
-def wrapper(c: Chooser, f: Callable[[Any], Checker]):
+
+def check_all_invariants(checker):
+    check_assertions("invariants", checker.invariants)
+    for p in checker.steppers:
+        check_assertions('invariants', p.invariants)
+
+def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     rc = RecordingChooser(c)
     try:
         checker = f(rc)
-        check_assertions("invariant", checker.invariants)
+        check_all_invariants(checker)
         # unfair process
         while True:
             can_step = [s for s in checker.steppers if not s.is_done()]
@@ -96,10 +106,14 @@ def wrapper(c: Chooser, f: Callable[[Any], Checker]):
             st = rc.choose("inner_stepper", can_step)
             n = st.next()
             rc.selected.append(("inner_step", n.name))
+            states[0] += 1
             n.func(st)
-            check_assertions("invariant", checker.invariants)
+            check_all_invariants(checker)
+
+        states[0] += 1
         check_assertions("final", checker.endchecks)
     except:
+        print("states: %d" % (states[0],))
         print("choices were:")
         for name, c in rc.selected:
             print("%s: %s" % (name, c))
@@ -107,4 +121,7 @@ def wrapper(c: Chooser, f: Callable[[Any], Checker]):
 
 
 def run(f):
-    run_choices(lambda c: wrapper(c, f))
+    states = [0]
+    run_choices(lambda c: wrapper(states, c, f))
+    print("states: %d" % (states[0],))
+
