@@ -1,6 +1,6 @@
 from chtla import RecordingChooser, Checker, Process, Step, run
 
-# from page 19 in TLA+ book -- should fail when amount == 6
+# from page 20 in TLA+ book -- should pick up on stuttering
 
 
 def algo(t: RecordingChooser):
