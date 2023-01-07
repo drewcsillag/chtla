@@ -1,6 +1,6 @@
 from chtla import RecordingChooser, Checker, Process, Step, run
 
-# from page about 8 in TLA+ book
+# from page 12 in TLA+ book
 
 
 def algo(t: RecordingChooser):
@@ -8,22 +8,22 @@ def algo(t: RecordingChooser):
     acc = {p: 5 for p in people}
     sender = "alice"
     receiver = "bob"
-    amount = 3
+    amount = t.choose("amount", list(range(1, 7)))
 
     def endcheck():
-        print("endcheck")
+        # print("endcheck")
         return True
 
     def no_overdrafts():
-        print("noover")
+        # print("noover")
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
     def withdraw(_stepper):
-        print("with")
+        # print("with")
         acc[sender] -= amount
 
     def deposit(_stepper):
-        print("dep")
+        # print("dep")
         acc[receiver] += amount
 
     return Checker(
