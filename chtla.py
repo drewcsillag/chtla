@@ -18,24 +18,24 @@ def check_assertions(which, invariants):
             )
 
 
-class Step:
+class Action:
     def __init__(self, name, func) -> None:
         self.name = name
         self.func = func
 
     def __repr__(self):
-        return "<Step %s>" % self.name
+        return "<Action %s>" % self.name
 
 
 class Process:
     def __init__(
         self,
         name,
-        steps,
+        actions,
         invariants: List[Callable] = [],
         endchecks: List[Callable] = [],
     ) -> None:
-        self.steps = steps
+        self.actions = actions
         self.index = 0
         self.name = name
         self.invariants = invariants
@@ -44,28 +44,28 @@ class Process:
     def __repr__(self) -> str:
         return "<Process %s>" % (self.name)
 
-    def next(self) -> Step:
+    def next(self) -> Action:
         if self.is_done():
-            raise IndexError("shouldn't call next on a done stepper")
-        ret = self.steps[self.index]
+            raise IndexError("shouldn't call next on a done Process")
+        ret = self.actions[self.index]
         self.index += 1
         return ret
 
     def end(self) -> None:
-        self.index = len(self.steps)
+        self.index = len(self.actions)
 
     def goto(self, name) -> None:
-        for i in range(len(self.steps)):
-            if self.steps[i].name == name:
+        for i in range(len(self.actions)):
+            if self.actions[i].name == name:
                 self.index = i + 1
                 return
         raise ValueError(
-            "No step named %s known -- known steps %s"
-            % (name, repr([x.name for x in self.steps]))
+            "No action named %s known -- known actions %s"
+            % (name, repr([x.name for x in self.actions]))
         )
 
     def is_done(self):
-        return self.index >= len(self.steps)
+        return self.index >= len(self.actions)
 
 
 class Checker:
@@ -86,14 +86,18 @@ class RecordingChooser:
     def __init__(self, ch: Chooser):
         self.ch = ch
         self.selected: List[Tuple[str, Any]] = []
+        self.proc = None
 
     def choose(self, name: str, args: List[T]) -> T:
         ret = self.ch.choose(args)
-        self.selected.append((name, ret))
+        self.record(name, ret)
         return ret
 
     def record(self, name: str, val: Any):
-        self.selected.append((name, val))
+        self.selected.append(("%-20r %s" % (self.proc, name), val))
+
+    def set_proc(self, proc: Process):
+        self.proc = proc
 
 
 def check_all_invariants(checker: Checker):
@@ -107,16 +111,30 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     try:
         checker = f(rc)
         check_all_invariants(checker)
-        # unfair process?
+        # unfair process? Yes (because we kill processes)
         while True:
-            can_step = [s for s in checker.processes if not s.is_done()]
-            if not can_step:
+            live_processes = [p for p in checker.processes if not p.is_done()]
+            if not live_processes:
                 break
-            st = rc.choose("inner_proc", can_step)
-            n = st.next()
-            rc.selected.append(("inner_step", "%r %r" % (st, n.name)))
-            states[0] += 1
-            n.func(st)
+
+            rc.set_proc("scheduler")
+            proc = rc.choose("scheduling_proc", live_processes)
+            
+            if rc.choose("kill proc %r?" % (proc,), [False, True]):
+                rc.set_proc(proc)
+                rc.record("process died", True)
+                proc.end()
+            else:
+                rc.set_proc(proc)
+
+                n = proc.next()
+                rc.record("inner_step", n.name)
+
+                states[0] += 1
+                n.func(proc)
+
+            rc.set_proc(None)
+
             check_all_invariants(checker)
 
         states[0] += 1

@@ -1,4 +1,4 @@
-from chtla import RecordingChooser, Checker, Process, Step, run
+from chtla import RecordingChooser, Checker, Process, Action, run
 
 # from page 15 in TLA+ book -- should fail when amount == 6
 
@@ -18,18 +18,18 @@ def algo(t: RecordingChooser):
 
     def inner(num: int, t: RecordingChooser):
         def step_withdraw(_stepper):
-            t.record("Proc %d withdrawing %d" % (num, amount), acc[sender] - amount)
+            t.record("withdrawing %d, new balance" % (amount,), acc[sender] - amount)
             acc[sender] -= amount
 
         def step_deposit(_stepper):
-            t.record("Proc %d depositing %d" % (num, amount), acc[receiver] + amount)
+            t.record("depositing %d, new balance " % (amount,), acc[receiver] + amount)
             acc[receiver] += amount
 
         return Process(
             name="wire " + str(num),
-            steps=[
-                Step("Withdraw", step_withdraw),
-                Step("Deposit", step_deposit),
+            actions=[
+                Action("Withdraw", step_withdraw),
+                Action("Deposit", step_deposit),
             ],
         )
 

@@ -1,4 +1,4 @@
-from chtla import RecordingChooser, Checker, Process, Step, run
+from chtla import RecordingChooser, Checker, Process, Action, run
 
 # from page 19 in TLA+ book -- should work
 
@@ -31,9 +31,9 @@ def algo(t: RecordingChooser):
 
         return Process(
             name="wire " + str(num),
-            steps=[
-                Step("CheckBalance", step_check_balance_and_withdraw),
-                Step("Deposit", step_deposit),
+            actions=[
+                Action("CheckBalance", step_check_balance_and_withdraw),
+                Action("Deposit", step_deposit),
             ],
         )
 
