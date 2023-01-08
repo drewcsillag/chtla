@@ -1,5 +1,5 @@
 from typing import Optional, Callable, List, Any, TypeVar, Tuple
-from choice import Chooser, run_choices
+from bfschoice import Chooser, run_choices, BfsException
 
 T = TypeVar("T")
 
@@ -18,28 +18,22 @@ def check_assertions(which, invariants):
             )
 
 
+def always_true():
+    return True
+
 class Action:
-    def __init__(self, name, func) -> None:
+    def __init__(self, name, func, await_fn = lambda: True, fair = False) -> None:
         self.name = name
         self.func = func
+        self.fair = fair
+        self.await_fn = await_fn
 
     def __repr__(self):
         return "<Action %s>" % self.name
 
     def advanceable(self):
-        return True
+        return self.await_fn()
 
-class AwaitAction:
-    def __init__(self, name, func, advanceable) -> None:
-        self.name = name
-        self.func = func
-        self.advanceable_f = advanceable
-
-    def __repr__(self):
-        return "<AwaitAction %s>" % self.name
-
-    def advanceable(self):
-        return self.advanceable_f()
 
 class Process:
     def __init__(
@@ -48,12 +42,14 @@ class Process:
         actions,
         invariants: List[Callable] = [],
         endchecks: List[Callable] = [],
+        fair = False,
     ) -> None:
         self.actions = actions
         self.index = 0
         self.name = name
         self.invariants = invariants
         self.endchecks = endchecks
+        self.fair = fair
 
     def __repr__(self) -> str:
         return "<Process %s>" % (self.name)
@@ -76,7 +72,7 @@ class Process:
     def goto(self, name) -> None:
         for i in range(len(self.actions)):
             if self.actions[i].name == name:
-                self.index = i + 1
+                self.index = i 
                 return
         raise ValueError(
             "No action named %s known -- known actions %s"
@@ -95,13 +91,11 @@ class Checker:
         processes: List[Process],
         endchecks: List[Callable] = [],
         invariants: List[Callable] = [],
-        initvars: Callable = noop
     ) -> None:
         self.t = t
         self.processes = processes
         self.invariants = invariants
         self.endchecks = endchecks
-        self.initvars = initvars
 
 
 class RecordingChooser:
@@ -137,7 +131,6 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     rc = RecordingChooser(c)
     try:
         checker = f(rc)
-        checker.initvars()
         check_all_invariants(checker)
         # unfair process? Yes (because we kill processes)
         while True:
@@ -147,25 +140,30 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
 
             # which processes can make progress?
             advanceable_processes = [p for p in live_processes if p.peek().advanceable()]
-
+            
             if not advanceable_processes:
                 raise AssertionError("Deadlock detected, no live processes can proceed")            
 
             rc.set_proc("scheduler")
             proc = rc.choose("scheduling_proc", advanceable_processes)
 
-            if rc.choose("kill proc %r?" % (proc,), [False, True]):
-                rc.set_proc(proc)
-                rc.record("process died", True)
-                proc.end()
-            else:
-                rc.set_proc(proc)
+            next_action = proc.next()
 
-                n = proc.next()
-                rc.record("inner_step", n.name)
+            killed = False
+            if not proc.fair and not next_action.fair:
+                kill_proc = rc.choose("kill proc %r?" % (proc,), [False, True])
+                if kill_proc:
+                    rc.set_proc(proc)
+                    rc.record("process died", True)
+                    proc.end()
+                    killed = True
+                    
+            if not killed:
+                rc.set_proc(proc)
+                rc.record("inner_step", next_action.name)
 
                 states[0] += 1
-                n.func(proc)
+                next_action.func(proc)
 
             rc.set_proc(None)
 
@@ -173,6 +171,8 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
 
         states[0] += 1
         check_assertions("final", checker.endchecks)
+    except BfsException:
+        raise
     except:
         print("states: %d" % (states[0],))
         print("queue: %d" % (len(c.executions)))

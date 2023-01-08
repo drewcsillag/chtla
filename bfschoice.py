@@ -2,6 +2,9 @@ from typing import Callable, List, TypeVar
 
 T = TypeVar("T")
 
+class BfsException(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 class Chooser(object):
     def __init__(self, executions: List[List[int]], prechosen: List[int]):
@@ -16,13 +19,13 @@ class Chooser(object):
             self.index += 1
             return retind
 
-        for i in range(1, numArgs):
+        for i in range(numArgs):
             newExecution = self.prechosen + self.newChoices + [i]
             # print("New execution: " + str(newExecution))
             self.executions.append(newExecution)
             # print("exes now: " + str(self.executions))
-        self.newChoices.append(0)
-        return 0
+        
+        raise BfsException("BOOP!")
 
     def choose(self, args: List[T]) -> T:
         try:
@@ -49,13 +52,18 @@ def run_choices(fn: Callable[[Chooser], None]) -> None:
     executions: List[List[int]] = [[]]
     while executions:
         # print("executions is: " + str(executions))
-        fn(Chooser(executions, executions.pop()))
+        try:
+            e = executions[0]
+            executions=executions[1:]
+            fn(Chooser(executions, e))
+        except BfsException:
+            pass
 
-ct  = 0
-def b(c):
-    global ct
-    ct += 1
-    print("C -> " + str(ct))
-    print("%d %d %d" % (c.choose_index(2),c.choose_index(2),c.choose_index(2)))
+# ct  = 0
+# def b(c):
+#     global ct
+#     ct += 1
+#     print("C -> " + str(ct))
+#     print("%d %d %d" % (c.choose_index(2),c.choose_index(2),c.choose_index(2)))
 
-run_choices(b)
+# run_choices(b)

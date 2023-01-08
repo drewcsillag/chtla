@@ -15,3 +15,6 @@ while True:
 ```
 at any step, one of the choices should be whatever process is chosen to step,
 to instead set it to done.
+
+
+* TODO Need breadth first search mode. On choosing new: add all executions and throw an sentinel exception that the runner catches.
