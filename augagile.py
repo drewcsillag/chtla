@@ -36,7 +36,6 @@ def algo(t: RecordingChooser):
         st = SleepingThreads()
         if st:
             awaken_thread = t.choose('awaken thread', st)
-            # print("Waking %d" % (awaken_thread,))
             awake[awaken_thread] = True
 
     def Getter(threadno):
@@ -45,12 +44,9 @@ def algo(t: RecordingChooser):
 
             # print("Getter")
             if is_empty():
-                t.record("G","G is_empty true %d" % (threadno,))
                 awake[threadno] = False
-                # print("G awake after %d %s" % (threadno, repr(awake)))
                 isadvanceable(threadno)
             else:
-                # print("getter GOT")
                 notify()
                 occupied -= 1
 
@@ -66,23 +62,15 @@ def algo(t: RecordingChooser):
         )
 
     def isadvanceable(threadno):
-        # print("called")
-        # if not awake[threadno]:
-        #     print("thread  %d blocked" % (threadno,))
         return awake[threadno]
 
     def Putter(threadno):
         def step_main(stepper):
             nonlocal occupied
 
-            # print("Putter")
             if is_full():
-                t.record("P", "P Sleeping %d" % (threadno,))
-
                 awake[threadno] = False
-                # print("setting awake false")
             else:
-                # print("P notify")
                 notify()
                 occupied += 1
             stepper.goto("entry")
