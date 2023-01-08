@@ -1,13 +1,18 @@
 TODO
 
-* TODO do I need checks in Process?
 * TODO add process name by default to recording chooser things recorded
   both .record() and .choose()
 * TODO maybe make a parameters object?
-* TODO make a specific args part of Process and they run first
 * TODO stuttering detection and temporal/liveness checking
+  ** DONE <> invariant
+  ** TODO []
+  ** DONE <>[]
   <>, [], and <>[] equivalents
-  -- Have processes drop dead
+
+* DONE Need breadth first search mode. On choosing new: add all executions and throw an sentinel exception that the runner catches.
+* NOPE do I need checks in Process?
+* DONE add fair and unfair processes
+* DONE detect deadlock 
 
 ```python
 while True:
@@ -15,6 +20,4 @@ while True:
 ```
 at any step, one of the choices should be whatever process is chosen to step,
 to instead set it to done.
-
-
-* TODO Need breadth first search mode. On choosing new: add all executions and throw an sentinel exception that the runner catches.
+* NOPE make a specific args part of Process and they run first

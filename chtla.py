@@ -123,8 +123,17 @@ def check_all_invariants(checker: Checker):
         check_assertions("invariants", p.invariants)
 
 
+radius = 0
+
 def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     rc = RecordingChooser(c)
+    global radius
+    if rc.ch.executions:
+        if len(rc.ch.executions[0]) > radius:
+            radius = len(rc.ch.executions[0])
+            print("Radius -> " + str(radius))
+            print("   R2 ->  " + str(len(rc.ch.executions[-1])))
+            print("   Queue -> " + str(len(rc.ch.executions)))
     try:
         checker = f(rc)
         check_all_invariants(checker)
@@ -174,6 +183,8 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     except:
         print("states: %d" % (states[0],))
         print("queue: %d" % (len(c.executions)))
+        print("len(queue[-1]) " + str(len(c.executions[-1])))
+        print("radius len(queue[0]) " + str(len(c.executions[0])))
         print("choices were:")
         for name, c in rc.selected:
             print("%s: %s" % (name, c))

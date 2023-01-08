@@ -2,26 +2,17 @@
 
 from chtla import RecordingChooser, Checker, Process, Action, run
 
-algoct = 0
-
 
 def algo(t: RecordingChooser):
-    # global algoct
-    # algoct+=1
-    # if algoct %1000 == 0:
-    #     print("count -> " + str(algoct))
     BuffLen = 1
-    Threads = 3
+    Threads = 5
     # buffer = []
     # put_at = 0
     # get_at = 0
     awake = [True for i in range(Threads)]
     occupied = 0
-
-    # set in vars
-    # have to have at least one Getter, so choose up to Threads - 1
-    Putters = t.choose_index("putters", Threads - 1)
-    Putters += 1
+    # choose so there's at least one each of Getter and Putter
+    Putters = t.choose("putters", list(range(1, Threads)))
     # Getters = Threads - Putters
 
     def is_full():
@@ -44,13 +35,15 @@ def algo(t: RecordingChooser):
             awaken_thread = t.choose("awaken thread", st)
             awake[awaken_thread] = True
 
+    def is_runnable(threadno):
+        return awake[threadno]
+
     def Getter(threadno):
         def step_main(stepper):
             nonlocal occupied
 
             if is_empty():
                 awake[threadno] = False
-                isadvanceable(threadno)
             else:
                 notify()
                 occupied -= 1
@@ -61,12 +54,9 @@ def algo(t: RecordingChooser):
             name="Getter thread %d" % (threadno,),
             fair=True,
             actions=[
-                Action("entry", step_main, await_fn=lambda: isadvanceable(threadno)),
+                Action("entry", step_main, await_fn=lambda: is_runnable(threadno)),
             ],
         )
-
-    def isadvanceable(threadno):
-        return awake[threadno]
 
     def Putter(threadno):
         def step_main(stepper):
@@ -83,20 +73,16 @@ def algo(t: RecordingChooser):
             name="Putter thread %d" % (threadno,),
             fair=True,
             actions=[
-                Action("entry", step_main, await_fn=lambda: isadvanceable(threadno)),
+                Action("entry", step_main, await_fn=lambda: is_runnable(threadno)),
             ],
         )
 
-    procs = []
-    for i in range(Putters):
-        procs.append(Putter(i))
-
-    for i in range(Putters, Threads):
-        procs.append(Getter(i))
-
     return Checker(
         t,
-        processes=procs,
+        processes= (
+            [Putter(i) for i in range(Putters)] +
+            [Getter(i) for i in range(Putters, Threads)]
+        ),
     )
 
 

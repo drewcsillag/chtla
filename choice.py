@@ -80,8 +80,6 @@ def run_choices(fn: Callable[[Chooser], None], order: str) -> None:
         while executions:
             # print("executions is: " + str(executions))
             try:
-                e = executions[0]
-                executions = executions[1:]
-                fn(BFSChooser(executions, e))
+                fn(BFSChooser(executions, executions.pop(0)))
             except BfsException:
                 pass
