@@ -34,6 +34,11 @@ def algo(t: RecordingChooser):
 
     def notify():
         st = SleepingThreads()
+
+        # Fix can be this -- better to have putter and getter notification
+        # and that getters/putters only notify the opposite kind
+        # for i in st:
+        #     awake[i] = True
         if st:
             awaken_thread = t.choose('awaken thread', st)
             awake[awaken_thread] = True
