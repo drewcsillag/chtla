@@ -26,6 +26,20 @@ class Action:
     def __repr__(self):
         return "<Action %s>" % self.name
 
+    def advanceable(self):
+        return True
+
+class AwaitAction:
+    def __init__(self, name, func, advanceable) -> None:
+        self.name = name
+        self.func = func
+        self.advanceable_f = advanceable
+
+    def __repr__(self):
+        return "<AwaitAction %s>" % self.name
+
+    def advanceable(self):
+        return self.advanceable_f()
 
 class Process:
     def __init__(
@@ -43,6 +57,11 @@ class Process:
 
     def __repr__(self) -> str:
         return "<Process %s>" % (self.name)
+
+    def peek(self) -> Action:
+        if self.is_done():
+            raise IndexError("shouldn't call peek on a done Process")
+        return self.actions[self.index]
 
     def next(self) -> Action:
         if self.is_done():
@@ -67,7 +86,8 @@ class Process:
     def is_done(self):
         return self.index >= len(self.actions)
 
-
+def noop():
+    pass
 class Checker:
     def __init__(
         self,
@@ -75,18 +95,25 @@ class Checker:
         processes: List[Process],
         endchecks: List[Callable] = [],
         invariants: List[Callable] = [],
+        initvars: Callable = noop
     ) -> None:
         self.t = t
         self.processes = processes
         self.invariants = invariants
         self.endchecks = endchecks
+        self.initvars = initvars
 
 
 class RecordingChooser:
     def __init__(self, ch: Chooser):
         self.ch = ch
         self.selected: List[Tuple[str, Any]] = []
-        self.proc = None
+        self.proc: Optional[Any] = None
+
+    def choose_index(self, name: str, n:int) -> int:
+        ret = self.ch.choose_index(n)
+        self.record(name, ret)
+        return ret
 
     def choose(self, name: str, args: List[T]) -> T:
         ret = self.ch.choose(args)
@@ -96,7 +123,7 @@ class RecordingChooser:
     def record(self, name: str, val: Any):
         self.selected.append(("%-20r %s" % (self.proc, name), val))
 
-    def set_proc(self, proc: Process):
+    def set_proc(self, proc: Any):
         self.proc = proc
 
 
@@ -110,6 +137,7 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     rc = RecordingChooser(c)
     try:
         checker = f(rc)
+        checker.initvars()
         check_all_invariants(checker)
         # unfair process? Yes (because we kill processes)
         while True:
@@ -117,9 +145,15 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
             if not live_processes:
                 break
 
+            # which processes can make progress?
+            advanceable_processes = [p for p in live_processes if p.peek().advanceable()]
+
+            if not advanceable_processes:
+                raise AssertionError("Deadlock detected, no live processes can proceed")            
+
             rc.set_proc("scheduler")
-            proc = rc.choose("scheduling_proc", live_processes)
-            
+            proc = rc.choose("scheduling_proc", advanceable_processes)
+
             if rc.choose("kill proc %r?" % (proc,), [False, True]):
                 rc.set_proc(proc)
                 rc.record("process died", True)

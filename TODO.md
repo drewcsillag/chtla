@@ -4,6 +4,7 @@ TODO
 * TODO add process name by default to recording chooser things recorded
   both .record() and .choose()
 * TODO maybe make a parameters object?
+* TODO make a specific args part of Process and they run first
 * TODO stuttering detection and temporal/liveness checking
   <>, [], and <>[] equivalents
   -- Have processes drop dead

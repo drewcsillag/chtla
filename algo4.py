@@ -16,9 +16,11 @@ def algo(t: RecordingChooser):
         return True
 
     def inner(num: int, t: RecordingChooser):
-        t.set_proc("process %d" % (num,))
+        amount = 0
 
-        amount = t.choose("amount", list(range(0, acc[sender] + 1)))
+        def step_zero(stepper):
+            nonlocal amount 
+            amount = t.choose("amount", list(range(0, acc[sender] + 1)))
 
         def step_check_balance(stepper):
             if amount <= acc[sender]:
@@ -37,6 +39,7 @@ def algo(t: RecordingChooser):
         return Process(
             name="wire " + str(num),
             actions=[
+                Action("vars", step_zero),
                 Action("CheckBalance", step_check_balance),
                 Action("Withdraw", step_withdraw),
                 Action("Deposit", step_deposit),
