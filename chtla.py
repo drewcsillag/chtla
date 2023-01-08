@@ -1,10 +1,10 @@
 from typing import Optional, Callable, List, Any, TypeVar, Tuple
-from bfschoice import Chooser, run_choices, BfsException
+from choice import Chooser, run_choices, BfsException, BFS
 
 T = TypeVar("T")
 
 
-def check_assertions(which, invariants):
+def check_assertions(which, invariants) -> None:
     for invariant in invariants:
         if not invariant():
             raise AssertionError(
@@ -18,10 +18,6 @@ def check_assertions(which, invariants):
             )
 
 
-def always_true():
-    return True
-
-
 class Action:
     def __init__(self, name, func, await_fn=lambda: True, fair=False) -> None:
         self.name = name
@@ -29,10 +25,10 @@ class Action:
         self.fair = fair
         self.await_fn = await_fn
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Action %s>" % self.name
 
-    def advanceable(self):
+    def advanceable(self) -> bool:
         return self.await_fn()
 
 
@@ -82,10 +78,6 @@ class Process:
 
     def is_done(self):
         return self.index >= len(self.actions)
-
-
-def noop():
-    pass
 
 
 class Checker:
@@ -188,7 +180,7 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
         raise
 
 
-def run(f):
+def run(f, order=BFS):
     states = [0]
-    run_choices(lambda c: wrapper(states, c, f))
+    run_choices(lambda c: wrapper(states, c, f), order=order)
     print("states: %d" % (states[0],))

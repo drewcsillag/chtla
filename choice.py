@@ -3,6 +3,10 @@ from typing import Callable, List, TypeVar
 T = TypeVar("T")
 
 
+class BfsException(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
 class Chooser(object):
     def __init__(self, executions: List[List[int]], prechosen: List[int]):
         self.executions = executions
@@ -44,22 +48,40 @@ class Chooser(object):
     def stop(self) -> None:
         self.executions[:] = []
 
+class BFSChooser(Chooser):
+    def __init__(self, executions: List[List[int]], prechosen: List[int]):
+        super().__init__(executions, prechosen)
 
-def run_choices(fn: Callable[[Chooser], None]) -> None:
+    def choose_index(self, numArgs: int) -> int:
+        if self.index < len(self.prechosen):
+            retind = self.prechosen[self.index]
+            self.index += 1
+            return retind
+
+        for i in range(numArgs):
+            newExecution = self.prechosen + self.newChoices + [i]
+            # print("New execution: " + str(newExecution))
+            self.executions.append(newExecution)
+            # print("exes now: " + str(self.executions))
+
+        raise BfsException("BOOP!")
+
+DFS = 'DFS'
+BFS = 'BFS'
+def run_choices(fn: Callable[[Chooser], None], order: str) -> None:
     executions: List[List[int]] = [[]]
-    while executions:
-        # print("executions is: " + str(executions))
-        fn(Chooser(executions, executions.pop()))
 
+    if order == DFS:
+        while executions:
+            # print("executions is: " + str(executions))
+            fn(Chooser(executions, executions.pop()))
 
-ct = 0
-
-
-def b(c):
-    global ct
-    ct += 1
-    print("C -> " + str(ct))
-    print("%d %d %d" % (c.choose_index(2), c.choose_index(2), c.choose_index(2)))
-
-
-run_choices(b)
+    elif order == BFS:
+        while executions:
+            # print("executions is: " + str(executions))
+            try:
+                e = executions[0]
+                executions = executions[1:]
+                fn(BFSChooser(executions, e))
+            except BfsException:
+                pass
