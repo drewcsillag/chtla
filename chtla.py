@@ -21,8 +21,9 @@ def check_assertions(which, invariants):
 def always_true():
     return True
 
+
 class Action:
-    def __init__(self, name, func, await_fn = lambda: True, fair = False) -> None:
+    def __init__(self, name, func, await_fn=lambda: True, fair=False) -> None:
         self.name = name
         self.func = func
         self.fair = fair
@@ -42,7 +43,7 @@ class Process:
         actions,
         invariants: List[Callable] = [],
         endchecks: List[Callable] = [],
-        fair = False,
+        fair=False,
     ) -> None:
         self.actions = actions
         self.index = 0
@@ -72,7 +73,7 @@ class Process:
     def goto(self, name) -> None:
         for i in range(len(self.actions)):
             if self.actions[i].name == name:
-                self.index = i 
+                self.index = i
                 return
         raise ValueError(
             "No action named %s known -- known actions %s"
@@ -82,8 +83,11 @@ class Process:
     def is_done(self):
         return self.index >= len(self.actions)
 
+
 def noop():
     pass
+
+
 class Checker:
     def __init__(
         self,
@@ -104,7 +108,7 @@ class RecordingChooser:
         self.selected: List[Tuple[str, Any]] = []
         self.proc: Optional[Any] = None
 
-    def choose_index(self, name: str, n:int) -> int:
+    def choose_index(self, name: str, n: int) -> int:
         ret = self.ch.choose_index(n)
         self.record(name, ret)
         return ret
@@ -139,10 +143,12 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
                 break
 
             # which processes can make progress?
-            advanceable_processes = [p for p in live_processes if p.peek().advanceable()]
-            
+            advanceable_processes = [
+                p for p in live_processes if p.peek().advanceable()
+            ]
+
             if not advanceable_processes:
-                raise AssertionError("Deadlock detected, no live processes can proceed")            
+                raise AssertionError("Deadlock detected, no live processes can proceed")
 
             rc.set_proc("scheduler")
             proc = rc.choose("scheduling_proc", advanceable_processes)
@@ -157,7 +163,7 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
                     rc.record("process died", True)
                     proc.end()
                     killed = True
-                    
+
             if not killed:
                 rc.set_proc(proc)
                 rc.record("inner_step", next_action.name)

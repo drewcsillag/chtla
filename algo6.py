@@ -13,13 +13,13 @@ def algo(t: RecordingChooser):
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
     def outer_endcheck():
-        return acc['alice'] + acc['bob'] == 10
+        return acc["alice"] + acc["bob"] == 10
 
     def inner(num: int, t: RecordingChooser):
         amount = 0
 
         def step_zero(stepper):
-            nonlocal amount 
+            nonlocal amount
             amount = t.choose("amount", list(range(0, acc[sender] + 1)))
 
         def step_check_balance_and_withdraw(stepper):

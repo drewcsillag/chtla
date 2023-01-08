@@ -4,6 +4,7 @@ from chtla import RecordingChooser, Checker, Process, Action, run
 
 algoct = 0
 
+
 def algo(t: RecordingChooser):
     # global algoct
     # algoct+=1
@@ -19,7 +20,7 @@ def algo(t: RecordingChooser):
 
     # set in vars
     # have to have at least one Getter, so choose up to Threads - 1
-    Putters = t.choose_index('putters', Threads-1)
+    Putters = t.choose_index("putters", Threads - 1)
     Putters += 1
     # Getters = Threads - Putters
 
@@ -40,14 +41,13 @@ def algo(t: RecordingChooser):
         # for i in st:
         #     awake[i] = True
         if st:
-            awaken_thread = t.choose('awaken thread', st)
+            awaken_thread = t.choose("awaken thread", st)
             awake[awaken_thread] = True
 
     def Getter(threadno):
         def step_main(stepper):
             nonlocal occupied
 
-            # print("Getter")
             if is_empty():
                 awake[threadno] = False
                 isadvanceable(threadno)
@@ -56,14 +56,13 @@ def algo(t: RecordingChooser):
                 occupied -= 1
 
             stepper.goto("entry")
-            
+
         return Process(
-            name = "Getter thread %d" % (threadno,),
-            fair = True,
-            actions = [
-                Action("entry", step_main, 
-                    await_fn = lambda: isadvanceable(threadno)),
-            ]
+            name="Getter thread %d" % (threadno,),
+            fair=True,
+            actions=[
+                Action("entry", step_main, await_fn=lambda: isadvanceable(threadno)),
+            ],
         )
 
     def isadvanceable(threadno):
@@ -81,12 +80,11 @@ def algo(t: RecordingChooser):
             stepper.goto("entry")
 
         return Process(
-            name = "Putter thread %d" % (threadno,),
-            fair = True,
-            actions = [
-                Action("entry", step_main, 
-                    await_fn=lambda:isadvanceable(threadno)),
-            ]
+            name="Putter thread %d" % (threadno,),
+            fair=True,
+            actions=[
+                Action("entry", step_main, await_fn=lambda: isadvanceable(threadno)),
+            ],
         )
 
     procs = []
@@ -98,9 +96,9 @@ def algo(t: RecordingChooser):
 
     return Checker(
         t,
-        processes = procs,
+        processes=procs,
     )
-    
+
 
 if __name__ == "__main__":
     run(algo)

@@ -51,11 +51,15 @@ def run_choices(fn: Callable[[Chooser], None]) -> None:
         # print("executions is: " + str(executions))
         fn(Chooser(executions, executions.pop()))
 
-ct  = 0
+
+ct = 0
+
+
 def b(c):
     global ct
     ct += 1
     print("C -> " + str(ct))
-    print("%d %d %d" % (c.choose_index(2),c.choose_index(2),c.choose_index(2)))
+    print("%d %d %d" % (c.choose_index(2), c.choose_index(2), c.choose_index(2)))
+
 
 run_choices(b)

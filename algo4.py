@@ -19,7 +19,7 @@ def algo(t: RecordingChooser):
         amount = 0
 
         def step_zero(stepper):
-            nonlocal amount 
+            nonlocal amount
             amount = t.choose("amount", list(range(0, acc[sender] + 1)))
 
         def step_check_balance(stepper):

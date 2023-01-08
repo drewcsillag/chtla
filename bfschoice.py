@@ -2,9 +2,11 @@ from typing import Callable, List, TypeVar
 
 T = TypeVar("T")
 
+
 class BfsException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
 
 class Chooser(object):
     def __init__(self, executions: List[List[int]], prechosen: List[int]):
@@ -24,7 +26,7 @@ class Chooser(object):
             # print("New execution: " + str(newExecution))
             self.executions.append(newExecution)
             # print("exes now: " + str(self.executions))
-        
+
         raise BfsException("BOOP!")
 
     def choose(self, args: List[T]) -> T:
@@ -54,10 +56,11 @@ def run_choices(fn: Callable[[Chooser], None]) -> None:
         # print("executions is: " + str(executions))
         try:
             e = executions[0]
-            executions=executions[1:]
+            executions = executions[1:]
             fn(Chooser(executions, e))
         except BfsException:
             pass
+
 
 # ct  = 0
 # def b(c):
