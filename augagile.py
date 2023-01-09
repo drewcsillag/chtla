@@ -3,6 +3,7 @@
 from chtla import RecordingChooser, Checker, Process, Action, run, Process
 from typing import List
 
+
 def algo(t: RecordingChooser) -> Checker:
     BuffLen = 1
     Threads = 3
@@ -79,9 +80,9 @@ def algo(t: RecordingChooser) -> Checker:
 
     return Checker(
         t,
-        processes= (
-            [Putter(i) for i in range(Putters)] +
-            [Getter(i) for i in range(Putters, Threads)]
+        processes=(
+            [Putter(i) for i in range(Putters)]
+            + [Getter(i) for i in range(Putters, Threads)]
         ),
     )
 

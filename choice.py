@@ -7,6 +7,7 @@ class BfsException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
+
 class Chooser(object):
     def __init__(self, executions: List[List[int]], prechosen: List[int]):
         self.executions = executions
@@ -48,6 +49,7 @@ class Chooser(object):
     def stop(self) -> None:
         self.executions[:] = []
 
+
 class BFSChooser(Chooser):
     def __init__(self, executions: List[List[int]], prechosen: List[int]):
         super().__init__(executions, prechosen)
@@ -66,8 +68,11 @@ class BFSChooser(Chooser):
 
         raise BfsException("BOOP!")
 
-DFS = 'DFS'
-BFS = 'BFS'
+
+DFS = "DFS"
+BFS = "BFS"
+
+
 def run_choices(fn: Callable[[Chooser], None], order: str) -> None:
     executions: List[List[int]] = [[]]
 

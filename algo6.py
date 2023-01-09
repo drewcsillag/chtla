@@ -3,7 +3,7 @@ from chtla import RecordingChooser, Checker, Process, Action, run
 # from page 20 in TLA+ book -- should pick up on stuttering
 
 
-def algo(t: RecordingChooser)->Checker:
+def algo(t: RecordingChooser) -> Checker:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
@@ -18,7 +18,7 @@ def algo(t: RecordingChooser)->Checker:
     def inner(num: int, t: RecordingChooser) -> Process:
         amount = 0
 
-        def step_zero(stepper:Process) -> None:
+        def step_zero(stepper: Process) -> None:
             nonlocal amount
             amount = t.choose("amount", list(range(0, acc[sender] + 1)))
 
