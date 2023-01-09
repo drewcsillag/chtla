@@ -96,7 +96,7 @@ class RecordingChooser:
     def __init__(self, ch: Chooser):
         self.ch = ch
         self.selected: List[Tuple[str, Any]] = []
-        self.proc: str = "none"
+        self.proc: str = "init"
 
     def choose_index(self, name: str, n: int) -> int:
         """Choose a value between 0 and n-1, uses the name for debugging"""
@@ -107,12 +107,12 @@ class RecordingChooser:
     def choose(self, name: str, args: List[T]) -> T:
         """Choose from a list of alternatives, uses the name for debugging"""
         ret = self.ch.choose(args)
-        self.record(name, ret)
+        self.selected.append(("C %-20s %s" % (self.proc, name), ret))
         return ret
 
     def record(self, name: str, val: Any) -> None:
         """Records an event that will be reported if the model check fails"""
-        self.selected.append(("%-20r %s" % (self.proc, name), val))
+        self.selected.append(("I %-20s %s" % (self.proc, name), val))
 
     def set_proc(self, proc: str) -> None:
         self.proc = proc
@@ -201,7 +201,7 @@ def wrapper(
         print("states: %d" % (states[0],))
         print("queue: %d" % (len(c.executions)))
         print("len(queue[-1]) " + str(len(c.executions[-1])))
-        print("radius len(queue[0]) " + str(len(c.executions[0])))
+        print("diameter len(queue[0]) " + str(len(c.executions[0])))
         print("choices were:")
         for name, c in rc.selected:
             print("%s: %s" % (name, c))

@@ -16,7 +16,7 @@ def algo(chooser: RecordingChooser) -> Checker:
         return True
 
     def process(num: int) -> Process:
-        amount = chooser.choose("amount", list(range(0, acc[sender] + 1)))
+        amount = chooser.choose("amount " + str(num), list(range(0, acc[sender] + 1)))
 
         def step_check_balance(proc: Process) -> None:
             if amount <= acc[sender]:
