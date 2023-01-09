@@ -3,12 +3,12 @@ from chtla import RecordingChooser, Checker, Process, Action, run
 # from page 12 in TLA+ book -- should fail when amount == 6
 
 
-def algo(t: RecordingChooser) -> Checker:
+def algo(chooser: RecordingChooser) -> Checker:
     people = ["alice", "bob"]
     acc = {p: 5 for p in people}
     sender = "alice"
     receiver = "bob"
-    amount = t.choose("amount", list(range(1, 7)))
+    amount = chooser.choose("amount", list(range(1, 7)))
 
     def endcheck() -> bool:
         return True
@@ -16,14 +16,14 @@ def algo(t: RecordingChooser) -> Checker:
     def no_overdrafts() -> bool:
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def withdraw(_stepper: Process) -> None:
+    def withdraw(_proc: Process) -> None:
         acc[sender] -= amount
 
-    def deposit(_stepper: Process) -> None:
+    def deposit(_proc: Process) -> None:
         acc[receiver] += amount
 
     return Checker(
-        t,
+        chooser,
         processes=[
             Process(
                 name="wire",

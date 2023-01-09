@@ -3,7 +3,7 @@ from chtla import RecordingChooser, Checker, Process, Action, run
 # from page 19 in TLA+ book -- should work
 
 
-def algo(t: RecordingChooser) -> Checker:
+def algo(chooser: RecordingChooser) -> Checker:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
@@ -15,36 +15,35 @@ def algo(t: RecordingChooser) -> Checker:
     def outer_endcheck() -> bool:
         return True
 
-    def inner(num: int, t: RecordingChooser) -> Process:
-        amount = 0
+    def process(num: int) -> Process:
+        amount = chooser.choose("amount", list(range(0, acc[sender] + 1)))
 
-        def step_zero(stepper: Process) -> None:
-            nonlocal amount
-            amount = t.choose("amount", list(range(0, acc[sender] + 1)))
-
-        def step_check_balance_and_withdraw(stepper: Process) -> None:
+        def step_check_balance_and_withdraw(proc: Process) -> None:
             if amount <= acc[sender]:
-                t.record("Proc %d withdrawing %d" % (num, amount), acc[sender] - amount)
+                chooser.record(
+                    "Proc %d withdrawing %d" % (num, amount), acc[sender] - amount
+                )
                 acc[sender] -= amount
             else:
-                stepper.end()
+                proc.end()  # stop the process
 
-        def step_deposit(_stepper: Process) -> None:
-            t.record("Proc %d depsoitngs %d" % (num, amount), acc[receiver] + amount)
+        def step_deposit(_proc: Process) -> None:
+            chooser.record(
+                "Proc %d depositing %d" % (num, amount), acc[receiver] + amount
+            )
             acc[receiver] += amount
 
         return Process(
             name="wire " + str(num),
             actions=[
-                Action("vars", step_zero),
                 Action("CheckBalance", step_check_balance_and_withdraw),
                 Action("Deposit", step_deposit),
             ],
         )
 
     return Checker(
-        t,
-        processes=[inner(1, t), inner(2, t)],
+        chooser,
+        processes=[process(1), process(2)],
         invariants=[outer_no_overdrafts],
         endchecks=[outer_endcheck],
     )

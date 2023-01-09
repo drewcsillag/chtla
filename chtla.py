@@ -5,6 +5,8 @@ T = TypeVar("T")
 
 
 def check_assertions(which: str, invariants: List[Callable[[], bool]]) -> None:
+    """Given the list of checks in invariants, execute them, using the which param
+    to mark it when it fails"""
     for invariant in invariants:
         if not invariant():
             raise AssertionError(
@@ -35,34 +37,35 @@ class Action:
         return "<Action %s>" % self.name
 
     def advanceable(self) -> bool:
+        """Returns true if the Action can be executed, false if it's blocked"""
         return self.await_fn()
 
 
 class Process:
+    """A representation of a Process in the model checker"""
+
     def __init__(
         self,
         name: str,
         actions: List[Action],
-        invariants: List[Callable[[], bool]] = [],
-        endchecks: List[Callable[[], bool]] = [],
         fair: bool = False,
     ) -> None:
         self.actions = actions
         self.index = 0
         self.name = name
-        self.invariants = invariants
-        self.endchecks = endchecks
         self.fair = fair
 
     def __repr__(self) -> str:
         return "<Process %s>" % (self.name)
 
     def peek(self) -> Action:
+        """Return the next Action that would run"""
         if self.is_done():
             raise IndexError("shouldn't call peek on a done Process")
         return self.actions[self.index]
 
     def next(self) -> Action:
+        """Return the next Action and advance to the next"""
         if self.is_done():
             raise IndexError("shouldn't call next on a done Process")
         ret = self.actions[self.index]
@@ -70,9 +73,11 @@ class Process:
         return ret
 
     def end(self) -> None:
+        """stop the process so it effectively is dead"""
         self.index = len(self.actions)
 
     def goto(self, name: str) -> None:
+        """Go to a named action in the list of Actions"""
         for i in range(len(self.actions)):
             if self.actions[i].name == name:
                 self.index = i
@@ -83,6 +88,7 @@ class Process:
         )
 
     def is_done(self) -> bool:
+        """Returns true of the process is done/dead"""
         return self.index >= len(self.actions)
 
 
@@ -93,16 +99,19 @@ class RecordingChooser:
         self.proc: str = "none"
 
     def choose_index(self, name: str, n: int) -> int:
+        """Choose a value between 0 and n-1, uses the name for debugging"""
         ret = self.ch.choose_index(n)
         self.record(name, ret)
         return ret
 
     def choose(self, name: str, args: List[T]) -> T:
+        """Choose from a list of alternatives, uses the name for debugging"""
         ret = self.ch.choose(args)
         self.record(name, ret)
         return ret
 
     def record(self, name: str, val: Any) -> None:
+        """Records an event that will be reported if the model check fails"""
         self.selected.append(("%-20r %s" % (self.proc, name), val))
 
     def set_proc(self, proc: str) -> None:
@@ -110,14 +119,16 @@ class RecordingChooser:
 
 
 class Checker:
+    """Representation of the model checker"""
+
     def __init__(
         self,
-        t: RecordingChooser,
-        processes: List[Process],
-        endchecks: List[Callable[[], bool]] = [],
-        invariants: List[Callable[[], bool]] = [],
+        chooser: RecordingChooser,  # the chooser
+        processes: List[Process],  # the process list
+        endchecks: List[Callable[[], bool]] = [],  # end checks []<>
+        invariants: List[Callable[[], bool]] = [],  # invariants <>
     ) -> None:
-        self.t = t
+        self.chooser = chooser
         self.processes = processes
         self.invariants = invariants
         self.endchecks = endchecks
@@ -125,8 +136,6 @@ class Checker:
 
 def check_all_invariants(checker: Checker) -> None:
     check_assertions("invariants", checker.invariants)
-    for p in checker.processes:
-        check_assertions("invariants", p.invariants)
 
 
 radius = 0
