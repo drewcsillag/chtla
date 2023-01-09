@@ -12,3 +12,10 @@ where I said
 Having dug into TLA+ and PlusCal more, TLA+ is even worse than I remembered. PlusCal is notably less bad. But I think something that makes
 formal verification less accessible is literally that the standard tooling for TLA+/PlusCal is pretty awful. I'm hoping to make it less so
 with the rust version.
+
+In the py directory, the files named `algo`... are examples from Learning TLA+ to verify the model checker succeeds or fails as it should. There's another
+augagile.py which relates to the blog post [Augmenting Agile](https://www.hillelwayne.com/post/augmenting-agile/) where he debugs an algorithm with a bug.
+
+chtla.py is the model checker main bits.
+
+choice.py is the chooser from [here](https://github.com/drewcsillag/chooser)
