@@ -1,11 +1,11 @@
 # https://www.hillelwayne.com/post/augmenting-agile/
 
-from chtla import RecordingChooser, Checker, Process, Action, run
+from chtla import RecordingChooser, Checker, Process, Action, run, Process
+from typing import List
 
-
-def algo(t: RecordingChooser):
+def algo(t: RecordingChooser) -> Checker:
     BuffLen = 1
-    Threads = 5
+    Threads = 3
     # buffer = []
     # put_at = 0
     # get_at = 0
@@ -15,16 +15,16 @@ def algo(t: RecordingChooser):
     Putters = t.choose("putters", list(range(1, Threads)))
     # Getters = Threads - Putters
 
-    def is_full():
+    def is_full() -> bool:
         return occupied == BuffLen
 
-    def is_empty():
+    def is_empty() -> bool:
         return occupied == 0
 
-    def SleepingThreads():
+    def SleepingThreads() -> List[int]:
         return [i for i in range(Threads) if not awake[i]]
 
-    def notify():
+    def notify() -> None:
         st = SleepingThreads()
 
         # Fix can be this -- better to have putter and getter notification
@@ -35,11 +35,11 @@ def algo(t: RecordingChooser):
             awaken_thread = t.choose("awaken thread", st)
             awake[awaken_thread] = True
 
-    def is_runnable(threadno):
+    def is_runnable(threadno: int) -> bool:
         return awake[threadno]
 
-    def Getter(threadno):
-        def step_main(stepper):
+    def Getter(threadno: int) -> Process:
+        def step_main(stepper: Process) -> None:
             nonlocal occupied
 
             if is_empty():
@@ -58,8 +58,8 @@ def algo(t: RecordingChooser):
             ],
         )
 
-    def Putter(threadno):
-        def step_main(stepper):
+    def Putter(threadno: int) -> Process:
+        def step_main(stepper: Process) -> None:
             nonlocal occupied
 
             if is_full():

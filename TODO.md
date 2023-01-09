@@ -9,6 +9,8 @@ TODO
   ** DONE <>[]
   <>, [], and <>[] equivalents
 
+
+---- DONE THINGS ------
 * DONE Need breadth first search mode. On choosing new: add all executions and throw an sentinel exception that the runner catches.
 * NOPE do I need checks in Process?
 * DONE add fair and unfair processes

@@ -4,7 +4,7 @@ from choice import Chooser, run_choices, BfsException, BFS
 T = TypeVar("T")
 
 
-def check_assertions(which, invariants) -> None:
+def check_assertions(which: str, invariants: List[Callable[[], bool]]) -> None:
     for invariant in invariants:
         if not invariant():
             raise AssertionError(
@@ -19,7 +19,13 @@ def check_assertions(which, invariants) -> None:
 
 
 class Action:
-    def __init__(self, name, func, await_fn=lambda: True, fair=False) -> None:
+    def __init__(
+        self,
+        name: str,
+        func: Callable[["Process"], None],
+        await_fn: Callable[[], bool] = lambda: True,
+        fair: bool = False,
+    ) -> None:
         self.name = name
         self.func = func
         self.fair = fair
@@ -35,11 +41,11 @@ class Action:
 class Process:
     def __init__(
         self,
-        name,
-        actions,
-        invariants: List[Callable] = [],
-        endchecks: List[Callable] = [],
-        fair=False,
+        name: str,
+        actions: List[Action],
+        invariants: List[Callable[[], bool]] = [],
+        endchecks: List[Callable[[], bool]] = [],
+        fair: bool = False,
     ) -> None:
         self.actions = actions
         self.index = 0
@@ -66,7 +72,7 @@ class Process:
     def end(self) -> None:
         self.index = len(self.actions)
 
-    def goto(self, name) -> None:
+    def goto(self, name: str) -> None:
         for i in range(len(self.actions)):
             if self.actions[i].name == name:
                 self.index = i
@@ -76,29 +82,15 @@ class Process:
             % (name, repr([x.name for x in self.actions]))
         )
 
-    def is_done(self):
+    def is_done(self) -> bool:
         return self.index >= len(self.actions)
-
-
-class Checker:
-    def __init__(
-        self,
-        t,
-        processes: List[Process],
-        endchecks: List[Callable] = [],
-        invariants: List[Callable] = [],
-    ) -> None:
-        self.t = t
-        self.processes = processes
-        self.invariants = invariants
-        self.endchecks = endchecks
 
 
 class RecordingChooser:
     def __init__(self, ch: Chooser):
         self.ch = ch
         self.selected: List[Tuple[str, Any]] = []
-        self.proc: Optional[Any] = None
+        self.proc: str = "none"
 
     def choose_index(self, name: str, n: int) -> int:
         ret = self.ch.choose_index(n)
@@ -110,14 +102,28 @@ class RecordingChooser:
         self.record(name, ret)
         return ret
 
-    def record(self, name: str, val: Any):
+    def record(self, name: str, val: Any) -> None:
         self.selected.append(("%-20r %s" % (self.proc, name), val))
 
-    def set_proc(self, proc: Any):
+    def set_proc(self, proc: str) -> None:
         self.proc = proc
 
 
-def check_all_invariants(checker: Checker):
+class Checker:
+    def __init__(
+        self,
+        t: RecordingChooser,
+        processes: List[Process],
+        endchecks: List[Callable[[], bool]] = [],
+        invariants: List[Callable[[], bool]] = [],
+    ) -> None:
+        self.t = t
+        self.processes = processes
+        self.invariants = invariants
+        self.endchecks = endchecks
+
+
+def check_all_invariants(checker: Checker) -> None:
     check_assertions("invariants", checker.invariants)
     for p in checker.processes:
         check_assertions("invariants", p.invariants)
@@ -125,7 +131,10 @@ def check_all_invariants(checker: Checker):
 
 radius = 0
 
-def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
+
+def wrapper(
+    states: List[int], c: Chooser, f: Callable[[RecordingChooser], Checker]
+) -> None:
     rc = RecordingChooser(c)
     global radius
     if rc.ch.executions:
@@ -137,7 +146,6 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
     try:
         checker = f(rc)
         check_all_invariants(checker)
-        # unfair process? Yes (because we kill processes)
         while True:
             live_processes = [p for p in checker.processes if not p.is_done()]
             if not live_processes:
@@ -160,19 +168,19 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
             if not proc.fair and not next_action.fair:
                 kill_proc = rc.choose("kill proc %r?" % (proc,), [False, True])
                 if kill_proc:
-                    rc.set_proc(proc)
+                    rc.set_proc(proc.name)
                     rc.record("process died", True)
                     proc.end()
                     killed = True
 
             if not killed:
-                rc.set_proc(proc)
+                rc.set_proc(proc.name)
                 rc.record("inner_step", next_action.name)
 
                 states[0] += 1
                 next_action.func(proc)
 
-            rc.set_proc(None)
+            rc.set_proc("none")
 
             check_all_invariants(checker)
 
@@ -191,7 +199,7 @@ def wrapper(states: List[int], c: Chooser, f: Callable[[Any], Checker]):
         raise
 
 
-def run(f, order=BFS):
+def run(f: Callable[[RecordingChooser], Checker], order: str = BFS) -> None:
     states = [0]
     run_choices(lambda c: wrapper(states, c, f), order=order)
     print("states: %d" % (states[0],))
