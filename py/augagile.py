@@ -56,6 +56,7 @@ def Getter(threadno: int) -> Process[GlobalState, None]:
             state.occupied -= 1
 
         stepper.goto("entry")
+        return state
 
     return Process(
         name="Getter thread %d" % (threadno,),
@@ -83,6 +84,7 @@ def Putter(threadno: int) -> Process[GlobalState, None]:
             notify(state, chooser)
             state.occupied += 1
         stepper.goto("entry")
+        return state
 
     return Process(
         name="Putter thread %d" % (threadno,),

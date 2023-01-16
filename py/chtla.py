@@ -114,12 +114,13 @@ class LabelledAction(BaseAction[GS, PS]):
         print("LA - RUN -- " + str(self.ct))
         self.ct += 1
         self.state_checkpoints.append(copy.deepcopy(state))
+        chooser.record("States checkpointed are:", repr(self.state_checkpoints))
         cpc = CheckPointChooser(chooser, self.choices_to_make)
-        state_to_run_with = self.state_checkpoints[0]
+        state_to_run_with = copy.deepcopy(self.state_checkpoints[0])
         self.checkpoint_index = 1
         
         try:
-            self.func(process, self, state_to_run_with, chooser)
+            ret = self.func(process, self, state_to_run_with, chooser)
         except LabelException as le:
             self.choices_to_make += cpc.replay_new
             ret = le.state
@@ -127,7 +128,6 @@ class LabelledAction(BaseAction[GS, PS]):
         else:
             chooser.record("labelled action completed", self)
             self.done = True
-            ret = state_to_run_with
 
         for name, c in chooser.selected:
             print("%s: %s" % (name, c))
@@ -140,10 +140,11 @@ class LabelledAction(BaseAction[GS, PS]):
 
         # if still replaying...
         if self.checkpoint_index < len(self.state_checkpoints):
-            chooser.record("at label, still replaying", name)
             ret = self.state_checkpoints[self.checkpoint_index]
+
+            chooser.record("at label, still replaying state ", "%s %s" % (name, ret))
             self.checkpoint_index += 1
-            return ret
+            return copy.deepcopy(ret)
 
         chooser.record("REPLAY TO THIS POINT IS COMPLETE, scheduling", name)
         print("REPLAY TO THIS POINT IS DONE, scheduling after:" + name)
@@ -232,7 +233,7 @@ class RecordingChooser:
     def choose_index(self, name: str, n: int) -> int:
         """Choose a value between 0 and n-1, uses the name for debugging"""
         ret = self.ch.choose_index(n)
-        self.record(name + ": chose index", ret)
+        self.record(name + ": chose index", repr(ret))
         return ret
 
     def choose(self, name: str, args: List[T]) -> T:
@@ -243,12 +244,12 @@ class RecordingChooser:
         except IndexError:
             print("trying index %d of %r" % (index, args))
             raise
-        self.selected.append(("C[%d] %-20s %s" % (len(args), self.proc, name), ret))
+        self.selected.append(("C[%d] %-20s %s" % (len(args), self.proc, name), repr(ret)))
         return ret
 
     def record(self, name: str, val: Any) -> None:
         """Records an event that will be reported if the model check fails"""
-        self.selected.append(("I %-20s %s" % (self.proc, name), val))
+        self.selected.append(("I %-20s %s" % (self.proc, name), repr(val)))
 
     def set_proc(self, proc: str) -> None:
         self.proc = proc
