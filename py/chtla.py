@@ -1,5 +1,6 @@
 from typing import Optional, Callable, List, Any, TypeVar, Tuple, Generic, cast
 from choice import Chooser, run_choices, BfsException, BFS
+import copy
 
 T = TypeVar("T")
 GS = TypeVar("GS")  # Global state
@@ -37,7 +38,7 @@ class BaseAction(Generic[GS, PS]):
 
     def run(
         self, process: "Process[GS,PS]", state: GS, chooser: "RecordingChooser"
-    ) -> None:
+    ) -> GS:
         raise NotImplementedError()
 
 
@@ -45,7 +46,7 @@ class Action(BaseAction[GS, PS], Generic[GS, PS]):
     def __init__(
         self,
         name: str,
-        func: Callable[["Process[GS,PS]", GS, "RecordingChooser"], None],
+        func: Callable[["Process[GS,PS]", GS, "RecordingChooser"], GS],
         await_fn: Callable[[GS], bool] = lambda _s: True,
         fair: bool = False,
     ) -> None:
@@ -62,31 +63,34 @@ class Action(BaseAction[GS, PS], Generic[GS, PS]):
 
     def run(
         self, process: "Process[GS,PS]", state: GS, chooser: "RecordingChooser"
-    ) -> None:
-        self.func(process, state, chooser)
+    ) -> GS:
+        return self.func(process, state, chooser)
 
 
-class LabelException(Exception):
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
+class LabelException(Exception, Generic[GS]):
+    def __init__(self, state: GS) -> None:
+        self.state = state
 
-
-# FIXME: NEED TO PASS AROUND CHOOSER ALSO
-
-
+    
 class LabelledAction(BaseAction[GS, PS]):
     def __init__(
         self,
         name: str,
         func: Callable[
-            ["Process[GS, PS]", "LabelledAction[GS, PS]", GS, "RecordingChooser"], None
+            ["Process[GS, PS]", "LabelledAction[GS, PS]", GS, "RecordingChooser"], GS
         ],
         fair: bool = False,
     ) -> None:
         super().__init__(name, fair)
         self.current_await_fn: Callable[[GS], bool] = lambda _s: True
         self.func = func
+
         self.done = False
+        self.ct = 0
+        self.firstrun = True # Should be able to get rid of this
+        self.state_checkpoints: List[GS] = []
+        self.checkpoint_index = -1
+        self.choices_to_make: List[int] = []
 
     def __repr__(self) -> str:
         return "<LabelledAction %s>" % self.name
@@ -95,29 +99,58 @@ class LabelledAction(BaseAction[GS, PS]):
         """Returns true if the Action can be executed, false if it's blocked"""
         return self.current_await_fn(state)
 
-    def run(
-        self, process: "Process[GS, PS]", state: GS, chooser: "RecordingChooser"
-    ) -> None:
-        try:
-            self.func(process, self, state, chooser)
-        except LabelException:
-            pass
-
-    def label(self, name: str, state: GS) -> GS:
-
-        if self.fair:
-            next = 1
-
-        raise LabelException
-
-    def set_current_await(self, await_fn: Callable[[GS], bool]) -> None:
-        self.await_fn = await_fn
-
     def get_done_and_reset(self) -> bool:
         r = self.done
         if r:
             self.done = False
+            self.state_checkpoints = []
+            self.checkpoint_index = -1
+            self.choices_to_make = []
         return r
+
+    def run(
+        self, process: "Process[GS, PS]", state: GS, chooser: "RecordingChooser"
+    ) -> GS:
+        print("LA - RUN -- " + str(self.ct))
+        self.ct += 1
+        self.state_checkpoints.append(copy.deepcopy(state))
+        cpc = CheckPointChooser(chooser, self.choices_to_make)
+        state_to_run_with = self.state_checkpoints[0]
+        self.checkpoint_index = 1
+        
+        try:
+            self.func(process, self, state_to_run_with, chooser)
+        except LabelException as le:
+            self.choices_to_make += cpc.replay_new
+            ret = le.state
+
+        else:
+            chooser.record("labelled action completed", self)
+            self.done = True
+            ret = state_to_run_with
+
+        for name, c in chooser.selected:
+            print("%s: %s" % (name, c))
+        print("LA - /RUN\n")
+        return ret
+
+
+    def label(self, name: str, state: GS, chooser:"RecordingChooser") -> GS:
+        chooser.record("Label:", name)
+
+        # if still replaying...
+        if self.checkpoint_index < len(self.state_checkpoints):
+            chooser.record("at label, still replaying", name)
+            ret = self.state_checkpoints[self.checkpoint_index]
+            self.checkpoint_index += 1
+            return ret
+
+        chooser.record("REPLAY TO THIS POINT IS COMPLETE, scheduling", name)
+        print("REPLAY TO THIS POINT IS DONE, scheduling after:" + name)
+        raise LabelException(state)
+
+    def set_current_await(self, await_fn: Callable[[GS], bool]) -> None:
+        self.await_fn = await_fn
 
 
 class Process(Generic[GS, PS]):
@@ -127,7 +160,7 @@ class Process(Generic[GS, PS]):
         self,
         name: str,
         state: PS,
-        actions: List[Action[GS, PS]],
+        actions: List[BaseAction[GS, PS]],
         fair: bool = False,
     ) -> None:
         self.actions = actions
@@ -137,15 +170,15 @@ class Process(Generic[GS, PS]):
         self.state = state
 
     def __repr__(self) -> str:
-        return "<Process %s>" % (self.name)
+        return "<Process @%d - %s>" % (id(self), self.name)
 
-    def peek(self) -> Action[GS, PS]:
+    def peek(self) -> BaseAction[GS, PS]:
         """Return the next Action that would run"""
         if self.is_done():
             raise IndexError("shouldn't call peek on a done Process")
         return self.actions[self.index]
 
-    def next(self) -> Action[GS, PS]:
+    def next(self) -> BaseAction[GS, PS]:
         """Return the next Action and advance to the next"""
         if self.is_done():
             raise IndexError("shouldn't call next on a done Process")
@@ -178,7 +211,16 @@ class Process(Generic[GS, PS]):
 
     def is_done(self) -> bool:
         """Returns true of the process is done/dead"""
-        return self.index >= len(self.actions)
+        if self.index >= len(self.actions):
+            return True
+        action = self.actions[self.index]
+        if action.__class__.__name__ == LabelledAction.__name__:
+            if cast(LabelledAction[GS, PS], action).get_done_and_reset():
+                self.index += 1
+                if self.index >= len(self.actions):
+                    return True
+
+        return False
 
 
 class RecordingChooser:
@@ -190,13 +232,18 @@ class RecordingChooser:
     def choose_index(self, name: str, n: int) -> int:
         """Choose a value between 0 and n-1, uses the name for debugging"""
         ret = self.ch.choose_index(n)
-        self.record(name, ret)
+        self.record(name + ": chose index", ret)
         return ret
 
     def choose(self, name: str, args: List[T]) -> T:
         """Choose from a list of alternatives, uses the name for debugging"""
-        ret = self.ch.choose(args)
-        self.selected.append(("C %-20s %s" % (self.proc, name), ret))
+        try:
+            index = self.choose_index(name, len(args))
+            ret = args[index]
+        except IndexError:
+            print("trying index %d of %r" % (index, args))
+            raise
+        self.selected.append(("C[%d] %-20s %s" % (len(args), self.proc, name), ret))
         return ret
 
     def record(self, name: str, val: Any) -> None:
@@ -206,7 +253,24 @@ class RecordingChooser:
     def set_proc(self, proc: str) -> None:
         self.proc = proc
 
+class CheckPointChooser(RecordingChooser):
+    def __init__(self, rc: RecordingChooser, choices:List[int]) -> None:
+        super().__init__(rc.ch)
+        self.is_replaying = True
+        self.replay_choices: List[int] = choices
+        self.replay_index = 0
+        self.replay_new: List[int] = []
+        self.rc = rc
 
+    def choose_index(self, name: str, n: int) -> int:
+        if self.replay_index < len(self.replay_choices):
+            ret = self.replay_choices[self.replay_index]
+            self.replay_index += 1
+        else:
+            ret = self.rc.choose_index(name, n)
+            self.replay_new.append(ret)
+        return ret
+        
 class Checker(Generic[GS, PS]):
     """Representation of the model checker"""
 
@@ -214,7 +278,7 @@ class Checker(Generic[GS, PS]):
         self,
         chooser: RecordingChooser,  # the chooser
         processes: List[Process[GS, PS]],  # the process list
-        initstate: Callable[[RecordingChooser], Any],
+        initstate: Callable[[RecordingChooser], GS],
         endchecks: List[Callable[[GS], bool]] = [],  # end checks []<>
         invariants: List[Callable[[GS], bool]] = [],  # invariants <>
     ) -> None:
@@ -279,7 +343,7 @@ def wrapper(
                 rc.record("inner_step", next_action.name)
 
                 states[0] += 1
-                next_action.run(proc, state, rc)
+                state = next_action.run(proc, state, rc)
 
             rc.set_proc("none")
 
