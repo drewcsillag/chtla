@@ -39,7 +39,7 @@ def step_check_balance_and_withdraw(
         state.acc[sender] -= proc.state.amount
     else:
         proc.end()
-
+    return state
 
 def step_deposit(
     proc: Process[GlobalState, ProcessState],
@@ -50,6 +50,7 @@ def step_deposit(
         "depositing %d" % (proc.state.amount,), state.acc[receiver] + proc.state.amount
     )
     state.acc[receiver] += proc.state.amount
+    return state
 
 
 def algo(chooser: RecordingChooser) -> Checker[GlobalState, ProcessState]:

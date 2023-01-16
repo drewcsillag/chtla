@@ -32,6 +32,7 @@ def step_check_balance_and_withdraw(
         acc[sender] -= proc.state.amount
     else:
         proc.end()  # stop the process
+    return acc
 
 
 def step_deposit(
@@ -42,6 +43,7 @@ def step_deposit(
         acc[receiver] + proc.state.amount,
     )
     acc[receiver] += proc.state.amount
+    return acc
 
 
 def process(num: int, chooser: RecordingChooser) -> Process[Dict[str, int], PS]:
