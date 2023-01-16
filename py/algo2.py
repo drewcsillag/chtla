@@ -1,18 +1,19 @@
 from chtla import RecordingChooser, Checker, Process, Action, run
 from typing import Dict
+
 # from page 12 in TLA+ book -- should fail when amount == 6
 
 
-def algo(chooser: RecordingChooser) -> Checker:
+def algo(chooser: RecordingChooser) -> Checker[Dict[str, int]]:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
     amount = chooser.choose("amount", list(range(1, 7)))
 
-    def endcheck(acc) -> bool:
+    def endcheck(acc: Dict[str, int]) -> bool:
         return True
 
-    def no_overdrafts(acc) -> bool:
+    def no_overdrafts(acc: Dict[str, int]) -> bool:
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
     def withdraw(_proc: Process, acc: Dict[str, int]) -> None:
@@ -34,7 +35,7 @@ def algo(chooser: RecordingChooser) -> Checker:
         ],
         invariants=[no_overdrafts],
         endchecks=[endcheck],
-        initstate = lambda _ch: {p: 5 for p in people}
+        initstate=lambda _ch: {p: 5 for p in people},
     )
 
 

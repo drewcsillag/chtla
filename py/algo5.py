@@ -1,23 +1,24 @@
 from chtla import RecordingChooser, Checker, Process, Action, run
+from typing import Dict
 
 # from page 19 in TLA+ book -- should work
 
 
-def algo(chooser: RecordingChooser) -> Checker:
+def algo(chooser: RecordingChooser) -> Checker[Dict[str, int]]:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
-    
-    def outer_no_overdrafts(acc) -> bool:
+
+    def outer_no_overdrafts(acc: Dict[str, int]) -> bool:
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def outer_endcheck(_acc) -> bool:
+    def outer_endcheck(_acc: Dict[str, int]) -> bool:
         return True
 
     def process(num: int) -> Process:
         amount = chooser.choose("amount", list(range(0, 6)))
 
-        def step_check_balance_and_withdraw(proc: Process, acc) -> None:
+        def step_check_balance_and_withdraw(proc: Process, acc: Dict[str, int]) -> None:
             if amount <= acc[sender]:
                 chooser.record(
                     "Proc %d withdrawing %d" % (num, amount), acc[sender] - amount
@@ -26,7 +27,7 @@ def algo(chooser: RecordingChooser) -> Checker:
             else:
                 proc.end()  # stop the process
 
-        def step_deposit(_proc: Process, acc) -> None:
+        def step_deposit(_proc: Process, acc: Dict[str, int]) -> None:
             chooser.record(
                 "Proc %d depositing %d" % (num, amount), acc[receiver] + amount
             )
@@ -45,7 +46,7 @@ def algo(chooser: RecordingChooser) -> Checker:
         processes=[process(1), process(2)],
         invariants=[outer_no_overdrafts],
         endchecks=[outer_endcheck],
-        initstate = lambda _ch: {p: 5 for p in people}
+        initstate=lambda _ch: {p: 5 for p in people},
     )
 
 

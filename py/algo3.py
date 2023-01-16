@@ -1,28 +1,29 @@
 from chtla import RecordingChooser, Checker, Process, Action, run
+from typing import Dict
 
 # from page 15 in TLA+ book -- should fail when amount == 6
 
 
-def algo(chooser: RecordingChooser) -> Checker:
+def algo(chooser: RecordingChooser) -> Checker[Dict[str, int]]:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
     amount = chooser.choose("amount", list(range(0, 6)))
 
-    def no_overdrafts(acc) -> bool:
+    def no_overdrafts(acc: Dict[str, int]) -> bool:
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def outer_endcheck(acc) -> bool:
+    def outer_endcheck(acc: Dict[str, int]) -> bool:
         return True
 
     def process(num: int) -> Process:
-        def step_withdraw(_proc: Process, acc) -> None:
+        def step_withdraw(_proc: Process, acc: Dict[str, int]) -> None:
             chooser.record(
                 "withdrawing %d, new balance" % (amount,), acc[sender] - amount
             )
             acc[sender] -= amount
 
-        def step_deposit(_proc: Process, acc) -> None:
+        def step_deposit(_proc: Process, acc: Dict[str, int]) -> None:
             chooser.record(
                 "depositing %d, new balance " % (amount,), acc[receiver] + amount
             )
@@ -41,7 +42,7 @@ def algo(chooser: RecordingChooser) -> Checker:
         processes=[process(1), process(2)],
         invariants=[no_overdrafts],
         endchecks=[outer_endcheck],
-        initstate = lambda _ch: {p: 5 for p in people}
+        initstate=lambda _ch: {p: 5 for p in people},
     )
 
 

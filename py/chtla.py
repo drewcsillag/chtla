@@ -1,10 +1,13 @@
-from typing import Optional, Callable, List, Any, TypeVar, Tuple
+from typing import Optional, Callable, List, Any, TypeVar, Tuple, Generic
 from choice import Chooser, run_choices, BfsException, BFS
 
 T = TypeVar("T")
 S = TypeVar("S")
 
-def check_assertions(which: str, invariants: List[Callable[[], bool]], state) -> None:
+
+def check_assertions(
+    which: str, invariants: List[Callable[[S], bool]], state: S
+) -> None:
     """Given the list of checks in invariants, execute them, using the which param
     to mark it when it fails"""
     for invariant in invariants:
@@ -24,8 +27,8 @@ class Action:
     def __init__(
         self,
         name: str,
-        func: Callable[["Process"], None],
-        await_fn: Callable[[S], bool] = lambda: True,
+        func: Callable[["Process", S], None],
+        await_fn: Callable[[S], bool] = lambda _s: True,
         fair: bool = False,
     ) -> None:
         self.name = name
@@ -118,16 +121,16 @@ class RecordingChooser:
         self.proc = proc
 
 
-class Checker:
+class Checker(Generic[S]):
     """Representation of the model checker"""
 
     def __init__(
         self,
         chooser: RecordingChooser,  # the chooser
         processes: List[Process],  # the process list
-        initstate: Callable[[Chooser], Any],
-        endchecks: List[Callable[[], bool]] = [],  # end checks []<>
-        invariants: List[Callable[[], bool]] = [],  # invariants <>
+        initstate: Callable[[RecordingChooser], Any],
+        endchecks: List[Callable[[S], bool]] = [],  # end checks []<>
+        invariants: List[Callable[[S], bool]] = [],  # invariants <>
     ) -> None:
         self.chooser = chooser
         self.processes = processes
@@ -136,7 +139,7 @@ class Checker:
         self.initstate = initstate
 
 
-def check_all_invariants(checker: Checker, state) -> None:
+def check_all_invariants(checker: Checker[S], state: S) -> None:
     check_assertions("invariants", checker.invariants, state)
 
 
@@ -144,7 +147,7 @@ radius = 0
 
 
 def wrapper(
-    states: List[int], c: Chooser, f: Callable[[RecordingChooser], Checker]
+    states: List[int], c: Chooser, f: Callable[[RecordingChooser], Checker[S]]
 ) -> None:
     rc = RecordingChooser(c)
     global radius
@@ -211,7 +214,7 @@ def wrapper(
         raise
 
 
-def run(f: Callable[[RecordingChooser], Checker], order: str = BFS) -> None:
+def run(f: Callable[[RecordingChooser], Checker[S]], order: str = BFS) -> None:
     states = [0]
     run_choices(lambda c: wrapper(states, c, f), order=order)
     print("states: %d" % (states[0],))

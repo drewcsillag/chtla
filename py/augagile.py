@@ -4,31 +4,33 @@ from chtla import RecordingChooser, Checker, Process, Action, run, Process
 from typing import List
 
 
-def algo(t: RecordingChooser) -> Checker:
+class State:
+    def __init__(self, threads: int, _chooser: RecordingChooser) -> None:
+        self.occupied = 0
+        self.awake = [True for i in range(threads)]
+
+
+def algo(t: RecordingChooser) -> Checker["State"]:
     BuffLen = 1
     Threads = 3
     # buffer = []
     # put_at = 0
     # get_at = 0
-    class State:
-        def __init__(self, _chooser) -> None:
-            self.occupied = 0
-            self.awake = [True for i in range(Threads)]
 
     # choose so there's at least one each of Getter and Putter
     Putters = t.choose("putters", list(range(1, Threads)))
     # Getters = Threads - Putters
 
-    def is_full(state) -> bool:
+    def is_full(state: State) -> bool:
         return state.occupied == BuffLen
 
-    def is_empty(state) -> bool:
+    def is_empty(state: State) -> bool:
         return state.occupied == 0
 
-    def SleepingThreads(state) -> List[int]:
+    def SleepingThreads(state: State) -> List[int]:
         return [i for i in range(Threads) if not state.awake[i]]
 
-    def notify(state) -> None:
+    def notify(state: State) -> None:
         st = SleepingThreads(state)
 
         # Fix can be this -- better to have putter and getter notification
@@ -39,11 +41,11 @@ def algo(t: RecordingChooser) -> Checker:
             awaken_thread = t.choose("awaken thread", st)
             state.awake[awaken_thread] = True
 
-    def is_runnable(threadno: int, state) -> bool:
+    def is_runnable(threadno: int, state: State) -> bool:
         return state.awake[threadno]
 
     def Getter(threadno: int) -> Process:
-        def step_main(stepper: Process, state) -> None:
+        def step_main(stepper: Process, state: State) -> None:
 
             if is_empty(state):
                 state.awake[threadno] = False
@@ -57,12 +59,16 @@ def algo(t: RecordingChooser) -> Checker:
             name="Getter thread %d" % (threadno,),
             fair=True,
             actions=[
-                Action("entry", step_main, await_fn=lambda state: is_runnable(threadno, state)),
+                Action(
+                    "entry",
+                    step_main,
+                    await_fn=lambda state: is_runnable(threadno, state),
+                ),
             ],
         )
 
     def Putter(threadno: int) -> Process:
-        def step_main(stepper: Process, state) -> None:
+        def step_main(stepper: Process, state: State) -> None:
             if is_full(state):
                 state.awake[threadno] = False
             else:
@@ -74,7 +80,11 @@ def algo(t: RecordingChooser) -> Checker:
             name="Putter thread %d" % (threadno,),
             fair=True,
             actions=[
-                Action("entry", step_main, await_fn=lambda state: is_runnable(threadno, state)),
+                Action(
+                    "entry",
+                    step_main,
+                    await_fn=lambda state: is_runnable(threadno, state),
+                ),
             ],
         )
 
@@ -84,7 +94,7 @@ def algo(t: RecordingChooser) -> Checker:
             [Putter(i) for i in range(Putters)]
             + [Getter(i) for i in range(Putters, Threads)]
         ),
-        initstate = State
+        initstate=lambda ch: State(Threads, ch),
     )
 
 
