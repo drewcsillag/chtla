@@ -2,7 +2,7 @@ from typing import Optional, Callable, List, Any, TypeVar, Tuple
 from choice import Chooser, run_choices, BfsException, BFS
 
 T = TypeVar("T")
-
+S = TypeVar("S")
 
 def check_assertions(which: str, invariants: List[Callable[[], bool]], state) -> None:
     """Given the list of checks in invariants, execute them, using the which param
@@ -25,7 +25,7 @@ class Action:
         self,
         name: str,
         func: Callable[["Process"], None],
-        await_fn: Callable[[], bool] = lambda: True,
+        await_fn: Callable[[S], bool] = lambda: True,
         fair: bool = False,
     ) -> None:
         self.name = name
@@ -36,9 +36,9 @@ class Action:
     def __repr__(self) -> str:
         return "<Action %s>" % self.name
 
-    def advanceable(self) -> bool:
+    def advanceable(self, state: S) -> bool:
         """Returns true if the Action can be executed, false if it's blocked"""
-        return self.await_fn()
+        return self.await_fn(state)
 
 
 class Process:
@@ -165,7 +165,7 @@ def wrapper(
 
             # which processes can make progress?
             advanceable_processes = [
-                p for p in live_processes if p.peek().advanceable()
+                p for p in live_processes if p.peek().advanceable(state)
             ]
 
             if not advanceable_processes:
