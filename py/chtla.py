@@ -4,11 +4,11 @@ from choice import Chooser, run_choices, BfsException, BFS
 T = TypeVar("T")
 
 
-def check_assertions(which: str, invariants: List[Callable[[], bool]]) -> None:
+def check_assertions(which: str, invariants: List[Callable[[], bool]], state) -> None:
     """Given the list of checks in invariants, execute them, using the which param
     to mark it when it fails"""
     for invariant in invariants:
-        if not invariant():
+        if not invariant(state):
             raise AssertionError(
                 "%s %s failed!"
                 % (
@@ -125,6 +125,7 @@ class Checker:
         self,
         chooser: RecordingChooser,  # the chooser
         processes: List[Process],  # the process list
+        initstate: Callable[[Chooser], Any],
         endchecks: List[Callable[[], bool]] = [],  # end checks []<>
         invariants: List[Callable[[], bool]] = [],  # invariants <>
     ) -> None:
@@ -132,10 +133,11 @@ class Checker:
         self.processes = processes
         self.invariants = invariants
         self.endchecks = endchecks
+        self.initstate = initstate
 
 
-def check_all_invariants(checker: Checker) -> None:
-    check_assertions("invariants", checker.invariants)
+def check_all_invariants(checker: Checker, state) -> None:
+    check_assertions("invariants", checker.invariants, state)
 
 
 radius = 0
@@ -154,7 +156,8 @@ def wrapper(
             print("   Queue -> " + str(len(rc.ch.executions)))
     try:
         checker = f(rc)
-        check_all_invariants(checker)
+        state = checker.initstate(rc)
+        check_all_invariants(checker, state)
         while True:
             live_processes = [p for p in checker.processes if not p.is_done()]
             if not live_processes:
@@ -187,14 +190,14 @@ def wrapper(
                 rc.record("inner_step", next_action.name)
 
                 states[0] += 1
-                next_action.func(proc)
+                next_action.func(proc, state)
 
             rc.set_proc("none")
 
-            check_all_invariants(checker)
+            check_all_invariants(checker, state)
 
         states[0] += 1
-        check_assertions("final", checker.endchecks)
+        check_assertions("final", checker.endchecks, state)
     except BfsException:
         raise
     except:

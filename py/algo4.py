@@ -7,30 +7,29 @@ def algo(chooser: RecordingChooser) -> Checker:
     people = ["alice", "bob"]
     sender = "alice"
     receiver = "bob"
-    acc = {p: 5 for p in people}
 
-    def no_overdrafts() -> bool:
+    def no_overdrafts(acc) -> bool:
         return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def endcheck() -> bool:
+    def endcheck(acc) -> bool:
         return True
 
     def process(num: int) -> Process:
-        amount = chooser.choose("amount " + str(num), list(range(0, acc[sender] + 1)))
+        amount = chooser.choose("amount " + str(num), list(range(0, 6)))
 
-        def step_check_balance(proc: Process) -> None:
+        def step_check_balance(proc: Process, acc) -> None:
             if amount <= acc[sender]:
                 pass
             else:
                 proc.end()
 
-        def step_withdraw(_proc: Process) -> None:
+        def step_withdraw(_proc: Process, acc) -> None:
             chooser.record(
                 "withdrawing %d, new balance" % (amount,), acc[sender] - amount
             )
             acc[sender] -= amount
 
-        def step_deposit(_proc: Process) -> None:
+        def step_deposit(_proc: Process, acc) -> None:
             chooser.record(
                 "depositing %d, new balance " % (amount,), acc[receiver] + amount
             )
@@ -50,6 +49,7 @@ def algo(chooser: RecordingChooser) -> Checker:
         processes=[process(1), process(2)],
         invariants=[no_overdrafts],
         endchecks=[endcheck],
+        initstate = lambda _ch: {p: 5 for p in people}
     )
 
 
