@@ -13,7 +13,7 @@ class GS:
 
 def endcheck(state: GS) -> bool:
     print("ENDCHECK STATE IS " + repr(state))
-    return state.amount == 3
+    return state.amount == 4
 
 def step(
     proc: Process[GS, None],
@@ -39,9 +39,12 @@ def step(
 
 def bumpit(
     proc: Process[GS, None],
+    action: LabelledAction[GS, None],
     state: GS,
     chooser: RecordingChooser
 ) -> GS: 
+    state.amount +=1
+    state = action.label("bumpit2", state, chooser)
     state.amount +=1
     return state
 
@@ -59,7 +62,8 @@ def algo(chooser: RecordingChooser) -> Checker[GS, None]:
             ),
             Process(
                 name="other",
-                actions = [Action("bumpit", bumpit)],
+                actions = [
+                    LabelledAction("bumpit", bumpit)],
                 state = None,
                 fair=True
             )
@@ -69,4 +73,4 @@ def algo(chooser: RecordingChooser) -> Checker[GS, None]:
         initstate = lambda ch: GS()
     )
 if __name__ == "__main__":
-    run(algo, order = 'BFS')
+    run(algo, order = 'DFS')
