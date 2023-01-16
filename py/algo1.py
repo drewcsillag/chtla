@@ -3,30 +3,38 @@ from typing import Dict
 
 # from page about 8 in TLA+ book
 
+people = ["alice", "bob"]
 
-def algo(chooser: RecordingChooser) -> Checker[Dict[str, int]]:
-    people = ["alice", "bob"]
+sender = "alice"
+receiver = "bob"
+amount = 3
 
-    sender = "alice"
-    receiver = "bob"
-    amount = 3
 
-    def endcheck(acc: Dict[str, int]) -> bool:
-        print("endcheck")
-        return True
+def endcheck(acc: Dict[str, int]) -> bool:
+    print("endcheck")
+    return True
 
-    def no_overdrafts(acc: Dict[str, int]) -> bool:
-        print("noover")
-        return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def withdraw(_proc: Process, acc: Dict[str, int]) -> None:
-        print("with")
-        acc[sender] -= amount
+def no_overdrafts(acc: Dict[str, int]) -> bool:
+    print("noover")
+    return len([i for i in acc.values() if i >= 0]) == len(people)
 
-    def deposit(_proc: Process, acc: Dict[str, int]) -> None:
-        print("dep")
-        acc[receiver] += amount
 
+def withdraw(
+    _proc: Process[Dict[str, int], None], acc: Dict[str, int], chooser: RecordingChooser
+) -> None:
+    print("with")
+    acc[sender] -= amount
+
+
+def deposit(
+    _proc: Process[Dict[str, int], None], acc: Dict[str, int], chooser: RecordingChooser
+) -> None:
+    print("dep")
+    acc[receiver] += amount
+
+
+def algo(chooser: RecordingChooser) -> Checker[Dict[str, int], None]:
     return Checker(
         chooser,
         processes=[
@@ -36,6 +44,7 @@ def algo(chooser: RecordingChooser) -> Checker[Dict[str, int]]:
                     Action("Withdraw", withdraw),
                     Action("Deposit", deposit),
                 ],
+                state=None,
             )
         ],
         invariants=[no_overdrafts],
