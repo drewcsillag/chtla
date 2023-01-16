@@ -41,6 +41,7 @@ def step_check_balance_and_withdraw(
         proc.end()
     return state
 
+
 def step_deposit(
     proc: Process[GlobalState, ProcessState],
     state: GlobalState,

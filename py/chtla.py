@@ -71,7 +71,7 @@ class LabelException(Exception, Generic[GS]):
     def __init__(self, state: GS) -> None:
         self.state = state
 
-    
+
 class LabelledAction(BaseAction[GS, PS]):
     def __init__(
         self,
@@ -87,7 +87,7 @@ class LabelledAction(BaseAction[GS, PS]):
 
         self.done = False
         self.ct = 0
-        self.firstrun = True # Should be able to get rid of this
+        self.firstrun = True  # Should be able to get rid of this
         self.state_checkpoints: List[GS] = []
         self.checkpoint_index = -1
         self.choices_to_make: List[int] = []
@@ -118,7 +118,7 @@ class LabelledAction(BaseAction[GS, PS]):
         cpc = CheckPointChooser(chooser, self.choices_to_make)
         state_to_run_with = copy.deepcopy(self.state_checkpoints[0])
         self.checkpoint_index = 1
-        
+
         try:
             ret = self.func(process, self, state_to_run_with, chooser)
         except LabelException as le:
@@ -134,8 +134,7 @@ class LabelledAction(BaseAction[GS, PS]):
         print("LA - /RUN\n")
         return ret
 
-
-    def label(self, name: str, state: GS, chooser:"RecordingChooser") -> GS:
+    def label(self, name: str, state: GS, chooser: "RecordingChooser") -> GS:
         chooser.record("Label:", name)
 
         # if still replaying...
@@ -244,7 +243,9 @@ class RecordingChooser:
         except IndexError:
             print("trying index %d of %r" % (index, args))
             raise
-        self.selected.append(("C[%d] %-20s %s" % (len(args), self.proc, name), repr(ret)))
+        self.selected.append(
+            ("C[%d] %-20s %s" % (len(args), self.proc, name), repr(ret))
+        )
         return ret
 
     def record(self, name: str, val: Any) -> None:
@@ -254,8 +255,9 @@ class RecordingChooser:
     def set_proc(self, proc: str) -> None:
         self.proc = proc
 
+
 class CheckPointChooser(RecordingChooser):
-    def __init__(self, rc: RecordingChooser, choices:List[int]) -> None:
+    def __init__(self, rc: RecordingChooser, choices: List[int]) -> None:
         super().__init__(rc.ch)
         self.is_replaying = True
         self.replay_choices: List[int] = choices
@@ -271,7 +273,8 @@ class CheckPointChooser(RecordingChooser):
             ret = self.rc.choose_index(name, n)
             self.replay_new.append(ret)
         return ret
-        
+
+
 class Checker(Generic[GS, PS]):
     """Representation of the model checker"""
 
