@@ -13,7 +13,7 @@ class GS:
 
 def endcheck(state: GS) -> bool:
     print("ENDCHECK STATE IS " + repr(state))
-    return state.amount == 4
+    return state.amount == 8
 
 def step(
     proc: Process[GS, None],
@@ -21,20 +21,10 @@ def step(
     state: GS,
     chooser: RecordingChooser
 ) -> GS:
-    print("FIRST")
-    chooser.record("FIRST Advancing state from", state)
-    print("P1 Advancing state from {}".format(state))
-    state.amount += 1
-    chooser.record("state before label first", state.amount)
-    state = action.label("first", state, chooser)
-    chooser.record("SECOND state after label first", state.amount)
-    print("SECOND")
-    chooser.record("Advancing state from ", state)
-    print("P2 Advancing state from {}".format( state))
-    state.amount += 1
-    chooser.record("P2 amount is now", state)
-    state = action.label("second", state, chooser)
-    chooser.record("P2 after final label, state", state)
+    for i in range(3):
+        state = action.label("infor", state, chooser)
+        chooser.record("%s Advancing state from" % (i,), state)
+        state.amount += 1
     return state
 
 def bumpit(
@@ -43,9 +33,12 @@ def bumpit(
     state: GS,
     chooser: RecordingChooser
 ) -> GS: 
-    state.amount +=1
-    state = action.label("bumpit2", state, chooser)
-    state.amount +=1
+
+    while state.amount < 8:
+        chooser.record("amount is <8 advancing", state.amount)
+        state.amount +=1
+        state = action.label("bumpit2", state, chooser)
+           
     return state
 
 def algo(chooser: RecordingChooser) -> Checker[GS, None]:

@@ -68,4 +68,4 @@ def algo(chooser: RecordingChooser) -> Checker[Dict[str, int], PS]:
 
 
 if __name__ == "__main__":
-    run(algo)
+    run(algo, order='DFS')
