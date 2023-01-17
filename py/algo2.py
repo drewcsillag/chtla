@@ -17,14 +17,16 @@ def no_overdrafts(acc: Dict[str, int]) -> bool:
 
 def withdraw(
     proc: Process[Dict[str, int], int], acc: Dict[str, int], ch: RecordingChooser
-) -> None:
+) -> Dict[str, int]:
     acc[sender] -= proc.state
+    return acc
 
 
 def deposit(
     proc: Process[Dict[str, int], int], acc: Dict[str, int], ch: RecordingChooser
-) -> None:
+) -> Dict[str, int]:
     acc[receiver] += proc.state
+    return acc
 
 
 def algo(chooser: RecordingChooser) -> Checker[Dict[str, int], int]:

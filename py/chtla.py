@@ -111,42 +111,45 @@ class LabelledAction(BaseAction[GS, PS]):
     def run(
         self, process: "Process[GS, PS]", state: GS, chooser: "RecordingChooser"
     ) -> GS:
-        print("LA - RUN -- " + str(self.ct))
         self.ct += 1
         self.state_checkpoints.append(copy.deepcopy(state))
-        chooser.record("States checkpointed are:", repr(self.state_checkpoints))
+        chooser._record("l", "States checkpointed are:", repr(self.state_checkpoints))
         cpc = CheckPointChooser(chooser, self.choices_to_make)
         state_to_run_with = copy.deepcopy(self.state_checkpoints[0])
         self.checkpoint_index = 1
 
         try:
-            ret = self.func(process, self, state_to_run_with, chooser)
+            ret = self.func(process, self, state_to_run_with, cpc)
         except LabelException as le:
             self.choices_to_make += cpc.replay_new
+            # print("CPC REPLAY NEW IS " + str(cpc.replay_new))
             ret = le.state
 
         else:
-            chooser.record("labelled action completed", self)
+            chooser._record("L", "labelled action completed", self)
             self.done = True
 
-        for name, c in chooser.selected:
-            print("%s: %s" % (name, c))
-        print("LA - /RUN\n")
+        # INCREMENTALL PRINTS THINGS
+        # for name, c in chooser.selected:
+        #     print("%s: %s" % (name, c))
+        # print("LA - /RUN\n")
         return ret
 
     def label(self, name: str, state: GS, chooser: "RecordingChooser") -> GS:
-        chooser.record("Label:", name)
+        chooser._record("L", "Label:", name)
 
         # if still replaying...
         if self.checkpoint_index < len(self.state_checkpoints):
             ret = self.state_checkpoints[self.checkpoint_index]
 
-            chooser.record("at label, still replaying state ", "%s %s" % (name, ret))
+            chooser._record("l", "at label, still replaying state ", "%s %s" % (name, ret))
             self.checkpoint_index += 1
+            if self.checkpoint_index >= len(self.state_checkpoints):
+                chooser._record("l", "at label, replay complete, now entering new territory", name)
             return copy.deepcopy(ret)
 
-        chooser.record("REPLAY TO THIS POINT IS COMPLETE, scheduling", name)
-        print("REPLAY TO THIS POINT IS DONE, scheduling after:" + name)
+        chooser._record("L", "replay complete, returning to scheduler", name)
+        # print("REPLAY TO THIS POINT IS DONE, scheduling after:" + name)
         raise LabelException(state)
 
     def set_current_await(self, await_fn: Callable[[GS], bool]) -> None:
@@ -170,7 +173,8 @@ class Process(Generic[GS, PS]):
         self.state = state
 
     def __repr__(self) -> str:
-        return "<Process @%d - %s>" % (id(self), self.name)
+        # return "<Process @%d - %s>" % (id(self), self.name)
+        return self.name
 
     def peek(self) -> BaseAction[GS, PS]:
         """Return the next Action that would run"""
@@ -235,7 +239,7 @@ class RecordingChooser:
         self.record(name + ": chose index", repr(ret))
         return ret
 
-    def choose(self, name: str, args: List[T]) -> T:
+    def choose(self, name: str, args: List[T], pfx:str="C") -> T:
         """Choose from a list of alternatives, uses the name for debugging"""
         try:
             index = self.choose_index(name, len(args))
@@ -243,10 +247,16 @@ class RecordingChooser:
         except IndexError:
             print("trying index %d of %r" % (index, args))
             raise
+        c = "%s[%d] %s" % (pfx, len(args), self.proc)
+
         self.selected.append(
-            ("C[%d] %-20s %s" % (len(args), self.proc, name), repr(ret))
+            ("%-20s %s" % (c, name), repr(ret))
         )
         return ret
+
+    def _record(self, c: str, name: str, val: Any) -> None:
+        """Records an event that will be reported if the model check fails"""
+        self.selected.append(("%s %-20s %s" % (c, self.proc, name), repr(val)))
 
     def record(self, name: str, val: Any) -> None:
         """Records an event that will be reported if the model check fails"""
@@ -259,7 +269,6 @@ class RecordingChooser:
 class CheckPointChooser(RecordingChooser):
     def __init__(self, rc: RecordingChooser, choices: List[int]) -> None:
         super().__init__(rc.ch)
-        self.is_replaying = True
         self.replay_choices: List[int] = choices
         self.replay_index = 0
         self.replay_new: List[int] = []
@@ -268,12 +277,23 @@ class CheckPointChooser(RecordingChooser):
     def choose_index(self, name: str, n: int) -> int:
         if self.replay_index < len(self.replay_choices):
             ret = self.replay_choices[self.replay_index]
+            self.rc._record("R", name, ret)
             self.replay_index += 1
+            self.rc._record("R", "chose", ret)
         else:
             ret = self.rc.choose_index(name, n)
             self.replay_new.append(ret)
         return ret
+            
 
+    def record(self, name: str, val: Any) -> None:
+        if self.replay_index < len(self.replay_choices):
+            self.rc._record("R", name, val)
+        else:
+            self.rc.record(name, val)
+
+    def _record(self, c: str, name: str, val: Any) -> None:
+        self.rc._record(c, name, val)
 
 class Checker(Generic[GS, PS]):
     """Representation of the model checker"""
@@ -344,7 +364,7 @@ def wrapper(
 
             if not killed:
                 rc.set_proc(proc.name)
-                rc.record("inner_step", next_action.name)
+                rc._record("S", "inner_step", next_action.name)
 
                 states[0] += 1
                 state = next_action.run(proc, state, rc)
@@ -360,8 +380,8 @@ def wrapper(
     except:
         print("states: %d" % (states[0],))
         print("queue: %d" % (len(c.executions)))
-        print("len(queue[-1]) " + str(len(c.executions[-1])))
-        print("diameter len(queue[0]) " + str(len(c.executions[0])))
+        # print("len(queue[-1]) " + str(len(c.executions[-1])))
+        # print("diameter len(queue[0]) " + str(len(c.executions[0])))
         print("choices were:")
         for name, c in rc.selected:
             print("%s: %s" % (name, c))

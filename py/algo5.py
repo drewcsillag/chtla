@@ -23,7 +23,7 @@ def outer_endcheck(_acc: Dict[str, int]) -> bool:
 
 def step_check_balance_and_withdraw(
     proc: Process[Dict[str, int], PS], acc: Dict[str, int], chooser: RecordingChooser
-) -> None:
+) -> Dict[str, int]:
     if proc.state.amount <= acc[sender]:
         chooser.record(
             "Proc %d withdrawing %d" % (proc.state.num, proc.state.amount),
@@ -37,7 +37,7 @@ def step_check_balance_and_withdraw(
 
 def step_deposit(
     proc: Process[Dict[str, int], PS], acc: Dict[str, int], chooser: RecordingChooser
-) -> None:
+) -> Dict[str, int]:
     chooser.record(
         "Proc %d depositing %d" % (proc.state.num, proc.state.amount),
         acc[receiver] + proc.state.amount,

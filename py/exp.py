@@ -1,5 +1,5 @@
 from chtla import RecordingChooser, Checker, Process, Action, LabelledAction, run
-from typing import Dict
+from typing import Any
 
 
 class GS:
@@ -9,15 +9,16 @@ class GS:
     def __repr__(self) -> str:
         return "<GS @ %d - amount: %d>" % (id(self), self.amount)
 
-    def __deepcopy__(self, _ignored) -> "GS":
+    def __deepcopy__(self, _ignored:Any) -> "GS":
         x = GS()
         x.amount = self.amount
         return x
 
 
 def endcheck(state: GS) -> bool:
-    print("ENDCHECK STATE IS " + repr(state))
-    return state.amount == 8
+    r = state.amount <= 4 and state.amount > 2
+    print("ENDCHECK STATE IS " + repr(state) + " " + str(r))
+    return r
 
 
 def step(
@@ -29,9 +30,16 @@ def step(
     for i in range(3):
         state = action.label("infor", state, chooser)
         chooser.record("%s Advancing state from" % (i,), state)
-        state.amount += 1
+        sel = chooser.choose("picking 1 or 2", [2,1])
+        state.amount += sel
+        chooser.record("selection", sel)
     return state
 
+
+def advance_and_label(state: GS, action: LabelledAction[GS, None], chooser: RecordingChooser) -> GS:
+    state.amount += 1
+    state = action.label("bumpit2", state, chooser)
+    return state
 
 def bumpit(
     proc: Process[GS, None],
@@ -40,10 +48,10 @@ def bumpit(
     chooser: RecordingChooser,
 ) -> GS:
 
-    while state.amount < 8:
+    while state.amount < 4:
         chooser.record("amount is <8 advancing", state.amount)
-        state.amount += 1
-        state = action.label("bumpit2", state, chooser)
+        state = advance_and_label(state, action, chooser)
+        
     chooser.record("exiting while as amount >= 8", state.amount)
     return state
 
@@ -58,12 +66,12 @@ def algo(chooser: RecordingChooser) -> Checker[GS, None]:
                 state=None,
                 fair=True,
             ),
-            Process(
-                name="other",
-                actions=[LabelledAction("bumpit", bumpit)],
-                state=None,
-                fair=True,
-            ),
+            # Process(
+            #     name="other",
+            #     actions=[LabelledAction("bumpit", bumpit)],
+            #     state=None,
+            #     fair=True,
+            # ),
         ],
         invariants=[],
         endchecks=[endcheck],

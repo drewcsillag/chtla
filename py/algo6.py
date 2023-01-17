@@ -30,7 +30,7 @@ def step_check_balance_and_withdraw(
     proc: Process[GlobalState, ProcessState],
     state: GlobalState,
     chooser: RecordingChooser,
-) -> None:
+) -> GlobalState:
     if proc.state.amount <= state.acc[sender]:
         chooser.record(
             "withdrawing %d" % (proc.state.amount,),
@@ -46,7 +46,7 @@ def step_deposit(
     proc: Process[GlobalState, ProcessState],
     state: GlobalState,
     chooser: RecordingChooser,
-) -> None:
+) -> GlobalState:
     chooser.record(
         "depositing %d" % (proc.state.amount,), state.acc[receiver] + proc.state.amount
     )

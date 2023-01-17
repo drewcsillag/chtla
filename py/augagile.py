@@ -47,7 +47,7 @@ def Getter(threadno: int) -> Process[GlobalState, None]:
         stepper: Process[GlobalState, None],
         state: GlobalState,
         chooser: RecordingChooser,
-    ) -> None:
+    ) -> GlobalState:
 
         if is_empty(state):
             state.awake[threadno] = False
@@ -77,7 +77,7 @@ def Putter(threadno: int) -> Process[GlobalState, None]:
         stepper: Process[GlobalState, None],
         state: GlobalState,
         chooser: RecordingChooser,
-    ) -> None:
+    ) -> GlobalState:
         if is_full(state):
             state.awake[threadno] = False
         else:
