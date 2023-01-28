@@ -129,10 +129,6 @@ class LabelledAction(BaseAction[GS, PS]):
             chooser._record("L", "labelled action completed", self)
             self.done = True
 
-        # INCREMENTALL PRINTS THINGS
-        # for name, c in chooser.selected:
-        #     print("%s: %s" % (name, c))
-        # print("LA - /RUN\n")
         return ret
 
     def label(self, name: str, state: GS, chooser: "RecordingChooser") -> GS:
@@ -146,6 +142,7 @@ class LabelledAction(BaseAction[GS, PS]):
             self.checkpoint_index += 1
             if self.checkpoint_index >= len(self.state_checkpoints):
                 chooser._record("l", "at label, replay complete, now entering new territory", name)
+                chooser.is_replaying = False
             return copy.deepcopy(ret)
 
         chooser._record("L", "replay complete, returning to scheduler", name)
@@ -232,6 +229,7 @@ class RecordingChooser:
         self.ch = ch
         self.selected: List[Tuple[str, Any]] = []
         self.proc: str = "init"
+        self.is_replaying = False
 
     def choose_index(self, name: str, n: int) -> int:
         """Choose a value between 0 and n-1, uses the name for debugging"""
@@ -273,6 +271,7 @@ class CheckPointChooser(RecordingChooser):
         self.replay_index = 0
         self.replay_new: List[int] = []
         self.rc = rc
+        self.is_replaying = True
 
     def choose_index(self, name: str, n: int) -> int:
         if self.replay_index < len(self.replay_choices):
@@ -287,7 +286,7 @@ class CheckPointChooser(RecordingChooser):
             
 
     def record(self, name: str, val: Any) -> None:
-        if self.replay_index < len(self.replay_choices):
+        if self.is_replaying:
             self.rc._record("R", name, val)
         else:
             self.rc.record(name, val)
@@ -349,7 +348,11 @@ def wrapper(
                 raise AssertionError("Deadlock detected, no live processes can proceed")
 
             rc.set_proc("scheduler")
-            proc = rc.choose("scheduling_proc", advanceable_processes)
+            if len(advanceable_processes) == 1:
+                rc._record("c", "scheduling_proc", advanceable_processes[0])
+                proc = advanceable_processes[0]
+            else:
+                proc = rc.choose("scheduling_proc", advanceable_processes)
 
             next_action = proc.next()
 
