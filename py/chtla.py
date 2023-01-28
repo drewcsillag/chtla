@@ -117,6 +117,9 @@ class LabelledAction(BaseAction[GS, PS]):
         cpc = CheckPointChooser(chooser, self.choices_to_make)
         state_to_run_with = copy.deepcopy(self.state_checkpoints[0])
         self.checkpoint_index = 1
+        ## if we were awaiting before, clear it so we don't contrain future
+        ## awaits or labels
+        self.current_await_fn = lambda _s: True
 
         try:
             ret = self.func(process, self, state_to_run_with, cpc)
@@ -147,8 +150,23 @@ class LabelledAction(BaseAction[GS, PS]):
         chooser._record("L", "replay complete, returning to scheduler", name)
         raise LabelException(state)
 
-    def set_current_await(self, await_fn: Callable[[GS], bool]) -> None:
-        self.await_fn = await_fn
+    def do_await(self, name: str, await_fn: Callable[[GS], bool],state: GS, chooser: "RecordingChooser") -> GS:
+        chooser._record("A", "Await:", name)
+
+        # if still replaying...
+        if self.checkpoint_index < len(self.state_checkpoints):
+            ret = self.state_checkpoints[self.checkpoint_index]
+
+            chooser._record("a", "at await, still replaying state ", "%s %s" % (name, ret))
+            self.checkpoint_index += 1
+            if self.checkpoint_index >= len(self.state_checkpoints):
+                chooser._record("a", "at await, replay complete, now entering new territory", name)
+                chooser.is_replaying = False
+            return copy.deepcopy(ret)
+
+        chooser._record("A", "replay complete, returning to scheduler", name)
+        self.current_await_fn = await_fn
+        raise LabelException(state)
 
 
 class Process(Generic[GS, PS]):
