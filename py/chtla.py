@@ -133,40 +133,36 @@ class LabelledAction(BaseAction[GS, PS]):
 
         return ret
 
-    def label(self, name: str, state: GS, chooser: "RecordingChooser") -> GS:
-        chooser._record("L", "Label:", name)
-
+    def _await_label(self, kind: str, name: str, await_fn: Callable[[GS], bool],state: GS, chooser: "RecordingChooser") -> GS:
+        """await and label are basically the same thing"""
+        if kind == "L":
+            chooser._record("L", "Label:", name)
+            stopper = "label"
+        else:
+            chooser._record("A", "Await:", name)
+            stopper = "await"
+        lowkind = kind.lower()
         # if still replaying...
         if self.checkpoint_index < len(self.state_checkpoints):
             ret = self.state_checkpoints[self.checkpoint_index]
 
-            chooser._record("l", "at label, still replaying state ", "%s %s" % (name, ret))
+            chooser._record(lowkind, "at %s, still replaying state " % stopper, "%s %s" % (name, ret))
             self.checkpoint_index += 1
             if self.checkpoint_index >= len(self.state_checkpoints):
-                chooser._record("l", "at label, replay complete, now entering new territory", name)
+                chooser._record(lowkind, "at %s, replay complete, now entering new territory" % stopper, name)
                 chooser.is_replaying = False
             return copy.deepcopy(ret)
 
-        chooser._record("L", "replay complete, returning to scheduler", name)
-        raise LabelException(state)
-
-    def do_await(self, name: str, await_fn: Callable[[GS], bool],state: GS, chooser: "RecordingChooser") -> GS:
-        chooser._record("A", "Await:", name)
-
-        # if still replaying...
-        if self.checkpoint_index < len(self.state_checkpoints):
-            ret = self.state_checkpoints[self.checkpoint_index]
-
-            chooser._record("a", "at await, still replaying state ", "%s %s" % (name, ret))
-            self.checkpoint_index += 1
-            if self.checkpoint_index >= len(self.state_checkpoints):
-                chooser._record("a", "at await, replay complete, now entering new territory", name)
-                chooser.is_replaying = False
-            return copy.deepcopy(ret)
-
-        chooser._record("A", "replay complete, returning to scheduler", name)
+        chooser._record(kind, "replay complete, returning to scheduler", name)
         self.current_await_fn = await_fn
         raise LabelException(state)
+
+
+    def label(self, name: str, state: GS, chooser: "RecordingChooser") -> GS:
+        return self._await_label("L", name, lambda _s: True, state, chooser)
+
+    def do_await(self, name: str, await_fn: Callable[[GS], bool],state: GS, chooser: "RecordingChooser") -> GS:
+        return self._await_label("A", name, await_fn, state, chooser)
 
 
 class Process(Generic[GS, PS]):
