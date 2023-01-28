@@ -8,16 +8,26 @@ class GS:
         self.hits :List[str] = []
 
     def __repr__(self) -> str:
-        return "<GS @ %d - amount: %d>" % (id(self), self.amount)
+        return "<GS @ %d - amount: %d hits:%r>" % (id(self), self.amount, self.hits)
 
 
 def endcheck(state: GS) -> bool:
     r = (state.amount == 4)
-    if str(state.hits) == "['step2:info0', 'step2:info1', 'step1:info0', 'step1:info1']":
-        return False
+    # if str(state.hits) == "['step2:info0', 'step1:info0', 'step1:info1']":
+    #     return False
 
     return r
 
+def step1(
+    proc: Process[GS, None],
+    action: LabelledAction[GS, None],
+    state: GS,
+    chooser: RecordingChooser,
+) -> GS:
+    # state = action.label("info", state, chooser)
+    state.hits.append(proc.name + ":info0")
+    state.amount += 1
+    return state
 
 def step(
     proc: Process[GS, None],
@@ -25,11 +35,19 @@ def step(
     state: GS,
     chooser: RecordingChooser,
 ) -> GS:
-    for i in range(2):
-        state = action.label("info", state, chooser)
-        state.hits += [proc.name + ":info" + str(i)]
-        sel = 1
-        state.amount += sel
+    state.hits.append(proc.name + ":info" + str(0))
+    state.amount += 1
+    state = action.label("info", state, chooser)
+
+    state.hits.append(proc.name + ":info" + str(1))
+    state.amount += 1
+    # state = action.label("info", state, chooser)
+
+    # for i in range(2):
+    #     state.hits.append(proc.name + ":info" + str(i))
+    #     state.amount += 1
+    #     state = action.label("info", state, chooser)
+
     return state
 
 def docheck(

@@ -122,7 +122,6 @@ class LabelledAction(BaseAction[GS, PS]):
             ret = self.func(process, self, state_to_run_with, cpc)
         except LabelException as le:
             self.choices_to_make += cpc.replay_new
-            # print("CPC REPLAY NEW IS " + str(cpc.replay_new))
             ret = le.state
 
         else:
@@ -146,7 +145,6 @@ class LabelledAction(BaseAction[GS, PS]):
             return copy.deepcopy(ret)
 
         chooser._record("L", "replay complete, returning to scheduler", name)
-        # print("REPLAY TO THIS POINT IS DONE, scheduling after:" + name)
         raise LabelException(state)
 
     def set_current_await(self, await_fn: Callable[[GS], bool]) -> None:
